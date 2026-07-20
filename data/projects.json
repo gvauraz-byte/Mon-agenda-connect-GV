@@ -23,5 +23,10 @@
     "id": "bla-bla",
     "name": "Bla-bla",
     "color": "#7f77dd"
+  },
+  {
+    "id": "gol",
+    "name": "Gol",
+    "color": "#7f77dd"
   }
 ]
