@@ -1,7 +1,7 @@
 [
   {
     "id": "prop-1784579935065-bome79nh",
-    "status": "pending",
+    "status": "accepted",
     "createdAt": "2026-07-20T20:38:55.065Z",
     "title": "anniversaire",
     "start": "2027-03-23",
@@ -12,6 +12,7 @@
     "projectName": "Perso",
     "projectColor": "#1d9e75",
     "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/home/",
-    "contactLabel": ""
+    "contactLabel": "",
+    "respondedAt": "2026-07-20T20:39:37.060Z"
   }
 ]
