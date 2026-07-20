@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Agenda projets (lecture seule)</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #F7F6F3;
+    color: #2C2C2A;
+    padding: 12px;
+  }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 10px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; font-weight: 600; margin: 0; }
+  .badge { font-size: 11px; color: #888780; border: 1px solid #D3D1C7; border-radius: 999px; padding: 2px 8px; }
+  .period-nav { display: flex; align-items: center; gap: 10px; }
+  .period-nav button { border: 1px solid #D3D1C7; background: #fff; border-radius: 8px; width: 32px; height: 32px; font-size: 16px; cursor: pointer; }
+  .period-nav button:disabled { opacity: 0.3; cursor: default; }
+  .period-label { font-size: 14px; font-weight: 500; min-width: 170px; text-align: center; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; align-items: center; }
+  .chip { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; border: 1px solid #D3D1C7; background: #fff; font-size: 12px; cursor: pointer; user-select: none; }
+  .chip.off { opacity: 0.4; }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .divider { border-top: 1px solid #D3D1C7; margin: 8px 0 10px; }
+  select.zone-select { font-size: 12px; padding: 3px 6px; border-radius: 6px; border: 1px solid #D3D1C7; }
+  .table-wrap { overflow-x: auto; background: #fff; border-radius: 10px; padding: 8px; }
+  table { border-collapse: collapse; table-layout: fixed; width: 100%; min-width: 960px; font-size: 11px; }
+  th { padding: 5px 2px; font-weight: 600; color: #5F5E5A; text-align: center; border-bottom: 1px solid #B4B2A9; }
+  td { padding: 2px 3px; text-align: left; vertical-align: top; overflow: hidden; cursor: pointer; border-bottom: 1px solid #EFEEEA; }
+  td:hover { outline: 1px solid #B4B2A9; outline-offset: -1px; }
+  .ev-line { font-size: 9.5px; display: flex; align-items: center; gap: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ev-line .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .ev-more { font-size: 9.5px; color: #888780; }
+  .hol-label { font-size: 9.5px; color: #A32D2D; overflow: hidden; text-overflow: ellipsis; }
+  #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.25); z-index: 5; }
+  .sheet { display: none; position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid #D3D1C7; border-radius: 16px 16px 0 0; padding: 16px; max-height: 60vh; overflow-y: auto; box-shadow: 0 -4px 20px rgba(0,0,0,0.12); z-index: 6; }
+  .sheet .close { float: right; border: none; background: none; font-size: 18px; cursor: pointer; }
+  .ev-row { padding: 8px 0; border-bottom: 1px solid #F1EFE8; font-size: 13px; }
+  .ev-row .row-top { display: flex; align-items: center; gap: 8px; }
+  .ev-row .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .ev-row .time { color: #888780; font-size: 12px; margin-left: auto; }
+  .ev-row .loc { font-size: 12px; color: #888780; margin-left: 16px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Agenda projets <span class="badge">lecture seule</span></h1>
+  <div class="period-nav">
+    <button id="prev-btn" aria-label="Periode precedente">&#8592;</button>
+    <span class="period-label" id="period-label"></span>
+    <button id="next-btn" aria-label="Periode suivante">&#8594;</button>
+  </div>
+</header>
+
+<div class="chip-row" id="project-chips"></div>
+<div class="chip-row" id="extra-chips"></div>
+<div class="divider"></div>
+
+<div class="table-wrap">
+  <table id="cal"></table>
+</div>
+
+<div id="overlay"></div>
+<div class="sheet" id="panel">
+  <button class="close" data-close="panel">&times;</button>
+  <h3 id="panel-date"></h3>
+  <div id="panel-events"></div>
+</div>
+
+<script src="/view.js"></script>
+</body>
+</html>

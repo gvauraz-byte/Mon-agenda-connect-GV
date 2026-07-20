@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Proposer un projet</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #F7F6F3;
+    color: #2C2C2A;
+    padding: 20px;
+  }
+  .card {
+    max-width: 480px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid #D3D1C7;
+  }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  p.intro { font-size: 13px; color: #888780; margin: 0 0 20px; }
+  label { display: block; font-size: 13px; font-weight: 500; margin: 14px 0 4px; }
+  input[type=text], input[type=email], input[type=date], input[type=time], textarea {
+    width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid #D3D1C7; font-size: 14px;
+  }
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+  .allday-row { display: flex; align-items: center; gap: 6px; margin-top: 14px; font-size: 13px; }
+  .locked-project {
+    background: #F1EFE8; border-radius: 8px; padding: 8px 10px; font-size: 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .locked-project .dot { width: 10px; height: 10px; border-radius: 50%; }
+  button[type=submit] {
+    margin-top: 20px; width: 100%; padding: 12px; border-radius: 8px; border: none;
+    background: #2C2C2A; color: #fff; font-size: 14px; cursor: pointer;
+  }
+  #confirmation { display: none; text-align: center; padding: 20px 0; }
+  #confirmation h2 { font-size: 16px; margin: 0 0 6px; }
+  #confirmation p { font-size: 13px; color: #888780; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div id="form-wrap">
+    <h1>Proposer un projet</h1>
+    <p class="intro">Remplis ce formulaire pour soumettre des dates, un lieu et un projet. La demande sera examinee avant d'etre ajoutee a l'agenda.</p>
+
+    <form id="submit-form">
+      <div id="project-field"></div>
+
+      <label>Titre <span style="color:#A32D2D;">*</span></label>
+      <input type="text" id="title" required placeholder="Ex : tournage clip promo">
+
+      <div class="row">
+        <div>
+          <label>Date de debut <span style="color:#A32D2D;">*</span></label>
+          <input type="date" id="start-date" required>
+        </div>
+        <div>
+          <label>Date de fin (optionnel)</label>
+          <input type="date" id="end-date">
+        </div>
+      </div>
+
+      <div class="allday-row">
+        <input type="checkbox" id="allday" checked>
+        <label for="allday" style="margin:0;">Journee entiere (pas d'heure precise)</label>
+      </div>
+
+      <div class="row" id="time-row" style="display:none;">
+        <div>
+          <label>Heure de debut</label>
+          <input type="time" id="start-time" value="09:00">
+        </div>
+        <div>
+          <label>Heure de fin</label>
+          <input type="time" id="end-time" value="10:00">
+        </div>
+      </div>
+
+      <label>Lieu</label>
+      <input type="text" id="location" placeholder="Adresse ou nom du lieu">
+
+      <label>Ton nom (optionnel)</label>
+      <input type="text" id="contact-name">
+
+      <label>Ton email (optionnel)</label>
+      <input type="email" id="contact-email">
+
+      <button type="submit">Envoyer la proposition</button>
+    </form>
+  </div>
+
+  <div id="confirmation">
+    <h2>Proposition envoyee</h2>
+    <p>Merci, ta proposition a bien ete transmise et sera examinee prochainement.</p>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const lockedProjectId = params.get('projet');
+let lockedProjectName = '';
+
+async function init(){
+  const field = document.getElementById('project-field');
+  if(lockedProjectId){
+    try{
+      const projects = await (await fetch('/api/projects')).json();
+      const proj = projects.find(p=>p.id===lockedProjectId);
+      if(proj){
+        lockedProjectName = proj.name;
+        field.innerHTML = `<label>Projet</label><div class="locked-project"><span class="dot" style="background:${proj.color}"></span>${proj.name}</div>`;
+        return;
+      }
+    } catch(e){}
+  }
+  field.innerHTML = `<label>Projet (optionnel)</label><input type="text" id="project-name" placeholder="Nom du projet si tu en as un">`;
+}
+
+document.getElementById('allday').addEventListener('change', (e)=>{
+  document.getElementById('time-row').style.display = e.target.checked ? 'none' : 'flex';
+});
+
+document.getElementById('submit-form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const title = document.getElementById('title').value.trim();
+  const startDate = document.getElementById('start-date').value;
+  const endDate = document.getElementById('end-date').value;
+  const allDay = document.getElementById('allday').checked;
+  const location = document.getElementById('location').value.trim();
+  const contactName = document.getElementById('contact-name').value.trim();
+  const contactEmail = document.getElementById('contact-email').value.trim();
+  const projectInput = document.getElementById('project-name');
+  const projectLabel = lockedProjectName || (projectInput ? projectInput.value.trim() : '');
+
+  if(!title || !startDate) return;
+
+  let start, end, startTime = null, endTime = null;
+  if(allDay){
+    start = startDate;
+    end = endDate && endDate >= startDate ? endDate : startDate;
+  } else {
+    startTime = document.getElementById('start-time').value || '09:00';
+    endTime = document.getElementById('end-time').value || startTime;
+    start = startDate;
+    end = endDate && endDate >= startDate ? endDate : startDate;
+  }
+
+  await fetch('/api/submissions', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ title, projectLabel, start, end, allDay, startTime, endTime, location, contactName, contactEmail })
+  });
+
+  document.getElementById('form-wrap').style.display = 'none';
+  document.getElementById('confirmation').style.display = 'block';
+});
+
+init();
+</script>
+</body>
+</html>

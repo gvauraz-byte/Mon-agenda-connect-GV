@@ -167,6 +167,7 @@
 
 <div class="chip-row" id="project-chips"></div>
 <div class="chip-row" id="extra-chips"></div>
+<div class="chip-row" id="tools-chips"></div>
 <div class="divider"></div>
 
 <div class="table-wrap">
@@ -182,8 +183,10 @@
   <form id="add-form">
     <input type="text" id="new-title" placeholder="Nouvel evenement" required>
     <label class="allday"><input type="checkbox" id="new-allday" checked> Journee entiere</label>
+    <label class="allday" id="new-end-date-label">jusqu'au <input type="date" id="new-end-date"></label>
     <input type="time" id="new-start-time" value="09:00" style="display:none;">
     <input type="time" id="new-end-time" value="10:00" style="display:none;">
+    <input type="text" id="new-location" placeholder="Lieu (optionnel)">
     <select id="new-project"><option value="">Sans projet</option></select>
     <select id="new-calendar"></select>
     <button type="submit">Ajouter</button>
@@ -199,6 +202,14 @@
     <input type="color" id="new-project-color" value="#7F77DD">
     <button id="new-project-add">Ajouter</button>
   </div>
+  <p style="font-size:12px;color:#888780;margin-top:12px;">Touche "Lien formulaire" sur un projet pour copier un lien a envoyer a un partenaire, deja fixe sur ce projet.</p>
+</div>
+
+<div class="sheet" id="submissions-panel">
+  <button class="close" data-close="submissions-panel">&times;</button>
+  <h3>Soumissions a valider</h3>
+  <p style="font-size:12px;color:#888780;margin:8px 0;">Lien generique a partager (projet a la charge du partenaire) : <span id="generic-form-link" style="color:#185FA5;word-break:break-all;"></span> <button id="copy-generic-link" type="button" style="border:none;background:none;color:#185FA5;cursor:pointer;font-size:12px;">Copier</button></p>
+  <div id="submissions-list"></div>
 </div>
 
 <script>
@@ -225,6 +236,30 @@ function iso(y,m,d){ return `${y}-${pad(m+1)}-${pad(d)}`; }
 function timeOf(isoStr){
   if(!isoStr) return '';
   return new Date(isoStr).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+}
+function addDaysStr(dateStr, n){
+  const d = new Date(dateStr+'T00:00:00');
+  d.setDate(d.getDate()+n);
+  return d.toISOString().slice(0,10);
+}
+function inclusiveEndDay(ev){
+  if(!ev.end) return ev.start.slice(0,10);
+  if(!ev.allDay) return ev.start.slice(0,10);
+  return addDaysStr(ev.end.slice(0,10), -1);
+}
+function daysBetween(ev){
+  const startDay = ev.start.slice(0,10);
+  const endDay = inclusiveEndDay(ev);
+  if(endDay <= startDay) return [startDay];
+  const days = [];
+  let cur = startDay;
+  let guard = 0;
+  while(cur <= endDay && guard < 370){
+    days.push(cur);
+    cur = addDaysStr(cur, 1);
+    guard++;
+  }
+  return days;
 }
 
 function getMonths(year){
@@ -364,9 +399,10 @@ async function loadEvents(){
     const events = await api(`/api/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
     events.forEach(ev=>{
       if(!ev.start) return;
-      const day = ev.start.slice(0,10);
-      if(!eventsByDay[day]) eventsByDay[day] = [];
-      eventsByDay[day].push(ev);
+      daysBetween(ev).forEach(day=>{
+        if(!eventsByDay[day]) eventsByDay[day] = [];
+        eventsByDay[day].push(ev);
+      });
     });
   } catch(e){
     console.error(e);
@@ -491,6 +527,10 @@ function openPanel(dateStr){
   document.getElementById('new-allday').checked = true;
   document.getElementById('new-start-time').style.display = 'none';
   document.getElementById('new-end-time').style.display = 'none';
+  document.getElementById('new-end-date-label').style.display = 'flex';
+  const endDateInput = document.getElementById('new-end-date');
+  endDateInput.min = dateStr;
+  endDateInput.value = dateStr;
   renderPanelEvents();
 }
 
@@ -521,6 +561,7 @@ function renderPanelEvents(){
     const row = document.createElement('div');
     row.className = 'ev-row';
     const timeLabel = ev.allDay ? 'Journee entiere' : (timeOf(ev.start) + (ev.end ? ' - ' + timeOf(ev.end) : ''));
+    const locLine = ev.location ? `<div style="font-size:12px;color:#888780;margin-left:16px;">${ev.location}</div>` : '';
     row.innerHTML = `
       <div class="row-top">
         <span class="dot" style="background:${proj ? proj.color : '#B4B2A9'}"></span>
@@ -528,9 +569,11 @@ function renderPanelEvents(){
         <span class="time">${timeLabel}</span>
         <span class="actions">
           <button class="edit">Modifier</button>
+          <button class="dup">Dupliquer</button>
           <button class="del">Supprimer</button>
         </span>
-      </div>`;
+      </div>
+      ${locLine}`;
     row.querySelector('.del').addEventListener('click', async ()=>{
       await api('/api/events', {method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({url: ev.url, etag: ev.etag})});
       await loadEvents();
@@ -538,6 +581,31 @@ function renderPanelEvents(){
       renderCalendar();
     });
     row.querySelector('.edit').addEventListener('click', ()=> openEditForm(row, ev, proj));
+    row.querySelector('.dup').addEventListener('click', async ()=>{
+      const target = prompt('Dupliquer vers quelle date ? (AAAA-MM-JJ)', ev.start.slice(0,10));
+      if(!target) return;
+      let start, end;
+      if(ev.allDay){
+        const startDay = ev.start.slice(0,10);
+        const endDay = inclusiveEndDay(ev);
+        const durationDays = (new Date(endDay+'T00:00:00') - new Date(startDay+'T00:00:00')) / 86400000;
+        start = target;
+        end = addDaysStr(target, durationDays);
+      } else {
+        const st = timeOf(ev.start);
+        const et = timeOf(ev.end);
+        start = new Date(`${target}T${st}:00`).toISOString();
+        end = new Date(`${target}T${et}:00`).toISOString();
+      }
+      await api('/api/events', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ title: ev.title, start, end, allDay: ev.allDay, projectId: proj ? proj.id : '', calendarUrl: ev.calendarUrl })
+      });
+      await loadEvents();
+      renderPanelEvents();
+      renderCalendar();
+    });
     wrap.appendChild(row);
   });
 }
@@ -547,13 +615,18 @@ function openEditForm(row, ev, proj){
   if(existing){ existing.remove(); return; }
   const form = document.createElement('div');
   form.className = 'edit-form';
+  const startDay = ev.start.slice(0,10);
+  const endDay = inclusiveEndDay(ev);
   const startTime = ev.allDay ? '09:00' : timeOf(ev.start).replace(' ','');
   const endTime = ev.allDay ? '10:00' : timeOf(ev.end).replace(' ','');
   form.innerHTML = `
     <input type="text" class="e-title" value="${ev.title.replace(/"/g,'&quot;')}">
     <label class="allday"><input type="checkbox" class="e-allday" ${ev.allDay ? 'checked' : ''}> Journee entiere</label>
+    <label class="allday">le <input type="date" class="e-start-date" value="${startDay}"></label>
+    <label class="allday e-end-date-label" style="${ev.allDay?'':'display:none;'}">jusqu'au <input type="date" class="e-end-date" value="${endDay}"></label>
     <input type="time" class="e-start" value="${startTime}" style="${ev.allDay?'display:none;':''}">
     <input type="time" class="e-end" value="${endTime}" style="${ev.allDay?'display:none;':''}">
+    <input type="text" class="e-location" placeholder="Lieu (optionnel)" value="${(ev.location||'').replace(/"/g,'&quot;')}">
     <select class="e-project"></select>
     <div class="row-buttons">
       <button class="save">Enregistrer</button>
@@ -572,6 +645,7 @@ function openEditForm(row, ev, proj){
     const on = e.target.checked;
     form.querySelector('.e-start').style.display = on ? 'none' : 'inline-block';
     form.querySelector('.e-end').style.display = on ? 'none' : 'inline-block';
+    form.querySelector('.e-end-date-label').style.display = on ? 'flex' : 'none';
   });
   form.querySelector('.cancel').addEventListener('click', ()=> form.remove());
   form.querySelector('.save').addEventListener('click', async ()=>{
@@ -579,19 +653,23 @@ function openEditForm(row, ev, proj){
     if(!title) return;
     const allDay = form.querySelector('.e-allday').checked;
     const projectId = form.querySelector('.e-project').value;
+    const location = form.querySelector('.e-location').value.trim();
+    const newStartDay = form.querySelector('.e-start-date').value || startDay;
     let start, end;
     if(allDay){
-      start = currentPanelDate; end = currentPanelDate;
+      const newEndDay = form.querySelector('.e-end-date').value;
+      start = newStartDay;
+      end = (newEndDay && newEndDay >= newStartDay) ? newEndDay : newStartDay;
     } else {
       const st = form.querySelector('.e-start').value || '09:00';
       const et = form.querySelector('.e-end').value || st;
-      start = new Date(`${currentPanelDate}T${st}:00`).toISOString();
-      end = new Date(`${currentPanelDate}T${et}:00`).toISOString();
+      start = new Date(`${newStartDay}T${st}:00`).toISOString();
+      end = new Date(`${newStartDay}T${et}:00`).toISOString();
     }
     await api('/api/events', {
       method: 'PUT',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ url: ev.url, etag: ev.etag, uid: ev.uid, title, start, end, allDay, projectId })
+      body: JSON.stringify({ url: ev.url, etag: ev.etag, uid: ev.uid, title, start, end, allDay, projectId, location })
     });
     await loadEvents();
     renderPanelEvents();
@@ -604,6 +682,7 @@ document.getElementById('new-allday').addEventListener('change', (e)=>{
   const on = e.target.checked;
   document.getElementById('new-start-time').style.display = on ? 'none' : 'inline-block';
   document.getElementById('new-end-time').style.display = on ? 'none' : 'inline-block';
+  document.getElementById('new-end-date-label').style.display = on ? 'flex' : 'none';
 });
 
 document.getElementById('add-form').addEventListener('submit', async (e)=>{
@@ -612,10 +691,13 @@ document.getElementById('add-form').addEventListener('submit', async (e)=>{
   const projectId = document.getElementById('new-project').value;
   const calendarUrl = document.getElementById('new-calendar').value;
   const allDay = document.getElementById('new-allday').checked;
+  const location = document.getElementById('new-location').value.trim();
   if(!title || !currentPanelDate) return;
   let start, end;
   if(allDay){
-    start = currentPanelDate; end = currentPanelDate;
+    start = currentPanelDate;
+    const endDateVal = document.getElementById('new-end-date').value;
+    end = (endDateVal && endDateVal >= currentPanelDate) ? endDateVal : currentPanelDate;
   } else {
     const st = document.getElementById('new-start-time').value || '09:00';
     const et = document.getElementById('new-end-time').value || st;
@@ -625,9 +707,10 @@ document.getElementById('add-form').addEventListener('submit', async (e)=>{
   await api('/api/events', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ title, start, end, allDay, projectId, calendarUrl })
+    body: JSON.stringify({ title, start, end, allDay, projectId, calendarUrl, location })
   });
   document.getElementById('new-title').value = '';
+  document.getElementById('new-location').value = '';
   await loadEvents();
   renderPanelEvents();
   renderCalendar();
@@ -645,7 +728,8 @@ function renderProjectsPanel(){
     row.innerHTML = `
       <input type="color" value="${p.color}">
       <input type="text" value="${p.name.replace(/"/g,'&quot;')}">
-      <button>Supprimer</button>
+      <button class="link" type="button" style="color:#185FA5;">Lien formulaire</button>
+      <button type="button">Supprimer</button>
     `;
     const colorInput = row.querySelector('input[type=color]');
     const nameInput = row.querySelector('input[type=text]');
@@ -656,7 +740,12 @@ function renderProjectsPanel(){
     }
     colorInput.addEventListener('change', save);
     nameInput.addEventListener('blur', save);
-    row.querySelector('button').addEventListener('click', async ()=>{
+    row.querySelector('.link').addEventListener('click', ()=>{
+      const url = `${window.location.origin}/formulaire.html?projet=${p.id}`;
+      navigator.clipboard?.writeText(url);
+      alert('Lien copie :\n'+url);
+    });
+    row.querySelector('button:last-child').addEventListener('click', async ()=>{
       if(!confirm(`Supprimer le projet "${p.name}" ?`)) return;
       await api('/api/projects/'+p.id, {method:'DELETE'});
       await loadProjects();
@@ -674,6 +763,138 @@ document.getElementById('new-project-add').addEventListener('click', async ()=>{
   await loadProjects();
   renderCalendar();
 });
+
+let pendingSubmissionsCount = 0;
+
+async function renderToolsChips(){
+  const wrap = document.getElementById('tools-chips');
+  wrap.innerHTML = '';
+
+  const pdfChip = document.createElement('button');
+  pdfChip.type = 'button';
+  pdfChip.className = 'chip';
+  pdfChip.textContent = 'Telecharger en PDF';
+  pdfChip.addEventListener('click', ()=>{
+    const params = new URLSearchParams({
+      year: periodYear,
+      projects: [...activeProjects].join(','),
+      holidays: showHolidays ? '1' : '0',
+      vacations: showVacations ? '1' : '0',
+      zone: vacationZone,
+    });
+    window.open('/api/export/pdf?'+params.toString(), '_blank');
+  });
+  wrap.appendChild(pdfChip);
+
+  try{
+    const share = await api('/api/share-link');
+    if(share.configured){
+      const shareChip = document.createElement('button');
+      shareChip.type = 'button';
+      shareChip.className = 'chip';
+      shareChip.textContent = 'Copier le lien lecture seule';
+      shareChip.addEventListener('click', ()=>{
+        const url = window.location.origin + share.path;
+        navigator.clipboard?.writeText(url);
+        alert('Lien copie :\n'+url);
+      });
+      wrap.appendChild(shareChip);
+    }
+  } catch(e){}
+
+  const subChip = document.createElement('button');
+  subChip.type = 'button';
+  subChip.className = 'chip';
+  subChip.textContent = pendingSubmissionsCount ? `Soumissions (${pendingSubmissionsCount})` : 'Soumissions';
+  subChip.addEventListener('click', openSubmissionsPanel);
+  wrap.appendChild(subChip);
+}
+
+async function refreshSubmissionsCount(){
+  try{
+    const list = await api('/api/submissions');
+    pendingSubmissionsCount = list.length;
+  } catch(e){ pendingSubmissionsCount = 0; }
+}
+
+async function openSubmissionsPanel(){
+  document.getElementById('generic-form-link').textContent = window.location.origin + '/formulaire.html';
+  showSheet('submissions-panel');
+  await renderSubmissionsPanel();
+}
+document.getElementById('copy-generic-link').addEventListener('click', ()=>{
+  const url = window.location.origin + '/formulaire.html';
+  navigator.clipboard?.writeText(url);
+  alert('Lien copie :\n'+url);
+});
+
+async function renderSubmissionsPanel(){
+  const wrap = document.getElementById('submissions-list');
+  wrap.innerHTML = '<p style="font-size:13px;color:#888780;">Chargement...</p>';
+  let list = [];
+  try{ list = await api('/api/submissions'); } catch(e){}
+  pendingSubmissionsCount = list.length;
+  renderToolsChips();
+  if(!list.length){
+    wrap.innerHTML = '<p style="font-size:13px;color:#888780;">Aucune soumission en attente.</p>';
+    return;
+  }
+  wrap.innerHTML = '';
+  list.forEach(sub=>{
+    const row = document.createElement('div');
+    row.className = 'ev-row';
+    const dateLabel = sub.allDay ? `${sub.start}${sub.end && sub.end!==sub.start ? ' au '+sub.end : ''}` : `${sub.start} ${sub.startTime||''}`;
+    row.innerHTML = `
+      <div class="row-top">
+        <span><strong>${sub.title}</strong></span>
+        <span class="time">${dateLabel}</span>
+      </div>
+      <div style="font-size:12px;color:#888780;margin:4px 0;">
+        ${sub.projectLabel ? 'Projet propose : '+sub.projectLabel+'<br>' : ''}
+        ${sub.location ? 'Lieu : '+sub.location+'<br>' : ''}
+        ${sub.contactName ? 'De : '+sub.contactName+' ' : ''}${sub.contactEmail ? '('+sub.contactEmail+')' : ''}
+      </div>
+      <div class="approve-form" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px;">
+        <select class="approve-project"></select>
+        <input type="text" class="approve-new-name" placeholder="Ou nouveau nom de projet" style="flex:1;min-width:120px;padding:6px;border-radius:8px;border:1px solid #D3D1C7;">
+        <input type="color" class="approve-new-color" value="#7F77DD">
+        <button type="button" class="approve">Accepter</button>
+        <button type="button" class="reject" style="color:#A32D2D;">Refuser</button>
+      </div>
+    `;
+    const sel = row.querySelector('.approve-project');
+    sel.innerHTML = '<option value="">Choisir un projet existant</option>';
+    projects.forEach(p=>{
+      const opt = document.createElement('option');
+      opt.value = p.id; opt.textContent = p.name;
+      if(sub.projectLabel && p.name.toLowerCase() === sub.projectLabel.toLowerCase()) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    if(sub.projectLabel && !projects.find(p=>p.name.toLowerCase()===sub.projectLabel.toLowerCase())){
+      row.querySelector('.approve-new-name').value = sub.projectLabel;
+    }
+    row.querySelector('.approve').addEventListener('click', async ()=>{
+      const projectId = sel.value;
+      const newProjectName = row.querySelector('.approve-new-name').value.trim();
+      const newProjectColor = row.querySelector('.approve-new-color').value;
+      await api(`/api/submissions/${sub.id}/approve`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ projectId, newProjectName, newProjectColor })
+      });
+      await loadProjects();
+      await loadEvents();
+      await renderSubmissionsPanel();
+      renderCalendar();
+    });
+    row.querySelector('.reject').addEventListener('click', async ()=>{
+      if(!confirm('Refuser cette soumission ?')) return;
+      await api('/api/submissions/'+sub.id, {method:'DELETE'});
+      await renderSubmissionsPanel();
+    });
+    wrap.appendChild(row);
+  });
+}
 
 async function runSearch(){
   const q = document.getElementById('search-input').value.trim();
@@ -731,10 +952,13 @@ document.getElementById('next-btn').addEventListener('click', async ()=>{
 (async function init(){
   const ok = await checkHealth();
   await loadProjects();
+  renderExtraChips();
   if(ok){
     await loadCalendars();
     await loadEvents();
+    await refreshSubmissionsCount();
   }
+  await renderToolsChips();
   await renderCalendar();
 })();
 </script>

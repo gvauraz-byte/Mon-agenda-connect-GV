@@ -33,6 +33,7 @@ Ce n'est pas ton mot de passe Apple habituel : il ne donne acces qu'au calendrie
 5. Dans la section "Environment Variables", ajoute :
    - `ICLOUD_USERNAME` = ton adresse iCloud (ex `gvauraz@icloud.com`)
    - `ICLOUD_APP_PASSWORD` = le mot de passe d'application genere a l'etape 1
+   - `SHARE_TOKEN` (optionnel, pour le lien de partage en lecture seule) = une chaine longue et aleatoire de ton choix, par exemple `a1b2c3d4e5f6g7h8` (invente-la, plus c'est long et random mieux c'est, personne ne doit pouvoir la deviner)
 6. Clique sur "Create Web Service". Le premier deploiement prend 2-3 minutes.
 
 Une fois termine, Render te donne une URL du type `https://agenda-projets.onrender.com`.
@@ -50,10 +51,22 @@ Note sur le plan gratuit : le service s'endort apres 15 minutes sans visite et m
 - "Gerer les projets" ouvre un panneau pour renommer un projet, changer sa couleur (touche le rond colore) ou le supprimer, et pour en ajouter un nouveau.
 - "Jours feries" et "Vacances scolaires" sont des filtres optionnels ; pour les vacances, choisis ta zone (A, B ou C).
 - Touche un jour dans le tableau pour voir ses evenements. Chaque evenement s'affiche sur sa propre ligne dans la case du jour (avec l'heure s'il en a une) ; s'il y en a plus de 3, un "+N" indique le nombre restant, visible en entier dans le panneau du jour.
-- Dans le panneau d'un jour, "Modifier" ouvre un petit formulaire pour changer le titre, l'heure (ou "journee entiere") et le projet d'un evenement existant.
+- Dans le panneau d'un jour, "Modifier" ouvre un petit formulaire pour changer le titre, la date, l'heure (ou "journee entiere") et le projet d'un evenement existant. Changer la date permet de deplacer facilement un evenement vers un autre jour.
+- "Dupliquer" cree une copie d'un evenement a la date de ton choix (utile pour un evenement recurrent que tu recrees toutes les semaines par exemple).
+- Pour un evenement "journee entiere", le champ "jusqu'au" (a l'ajout comme a l'edition) permet de le faire durer plusieurs jours sans le ressaisir chaque jour : il apparait alors sur toute la periode dans la vue annuelle.
 - Le formulaire d'ajout permet de choisir une heure de debut/fin (ou de laisser "journee entiere"), un projet, et dans quel calendrier iCloud (Personnel, Travail, etc.) l'evenement doit etre cree.
 - La barre de recherche en haut cherche un evenement par titre sur les 5 prochaines annees et te propose de sauter directement a sa date.
+- Un champ "Lieu" (optionnel) est disponible a la creation et a l'edition d'un evenement ; il apparait aussi dans l'app Calendrier de ton iPhone.
 - Un evenement cree ou modifie ici apparait automatiquement dans l'app Calendrier de ton iPhone, et inversement.
+
+## Nouveau : partage et formulaire partenaires
+
+- **Telecharger en PDF** : genere un PDF de la vue annuelle actuellement affichee (meme filtres projets/feries/vacances que ce que tu vois a l'ecran).
+- **Copier le lien lecture seule** (visible seulement si `SHARE_TOKEN` est configure) : un lien secret que tu peux envoyer a quelqu'un pour qu'il consulte ton agenda sans pouvoir rien modifier. Personne ne peut deviner ce lien sans que tu le lui donnes.
+- **Soumissions** : ouvre le panneau des propositions envoyees par des partenaires via le formulaire public. Pour chaque soumission tu peux l'associer a un projet existant (ou en creer un nouveau a la volee) puis "Accepter" pour creer le vrai evenement dans ton iCloud, ou "Refuser" pour la supprimer. Rien n'est jamais ajoute a ton agenda sans validation de ta part.
+- **Lien formulaire** (dans "Gerer les projets", a cote de chaque projet) : copie un lien a envoyer a un partenaire, deja verrouille sur ce projet precis (il ne pourra pas le changer). Le bouton "Copier" au sommet du panneau "Soumissions" donne le lien generique, ou le partenaire renseigne lui-meme le nom du projet.
+
+Le formulaire partenaire demande : titre, dates (avec option "jusqu'au" pour plusieurs jours), heure ou "journee entiere", lieu, et projet (verrouille ou libre) — exactement ce que tu avais demande.
 
 ## Mettre a jour l'appli apres une modification
 
@@ -67,5 +80,7 @@ Comme le depot n'est pas connecte a Git en ligne de commande, la facon la plus s
 
 - Renommer un projet ne retague pas retroactivement les evenements deja crees avec l'ancien nom (seuls les nouveaux evenements utilisent le nouveau nom).
 - Les vacances scolaires sont basees sur les dates officielles publiees pour les annees 2025-2026 et 2026-2027 ; au-dela, l'appli n'affichera rien tant que les dates ne seront pas ajoutees dans `lib/holidays.js`.
+- Important : les projets et les soumissions en attente sont stockes dans de simples fichiers sur le serveur (pas dans iCloud). Sur l'hebergement gratuit Render, ces fichiers peuvent etre reinitialises a chaque fois que tu mets a jour le code (nouveau deploiement) — donc traite les soumissions en attente avant de pousser une mise a jour, et sache que tes projets personnalises peuvent revenir aux 4 projets par defaut apres une mise a jour. Dis-moi si tu veux que je rende ce stockage durable (c'est possible, ca demande un peu plus d'infrastructure).
+- L'app principale (edition) reste sans mot de passe, comme tu l'as choisi ; le lien lecture seule et le formulaire partenaire sont proteges uniquement par le fait que leurs adresses ne sont pas devinables.
 
 Dis-moi ce que tu veux ameliorer ensuite.
