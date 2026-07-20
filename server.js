@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { fetchEvents, createEvent, deleteEvent, listCalendars } from './lib/caldav.js';
+import { fetchEvents, createEvent, updateEvent, deleteEvent, listCalendars } from './lib/caldav.js';
 import { loadProjects, saveProjects, slugify } from './lib/projects.js';
 import { isHoliday, isVacation } from './lib/holidays.js';
 
@@ -43,6 +43,17 @@ app.post('/api/projects', (req, res) => {
   res.json(list);
 });
 
+app.put('/api/projects/:id', (req, res) => {
+  const { name, color } = req.body;
+  const list = loadProjects();
+  const project = list.find((p) => p.id === req.params.id);
+  if (!project) return res.status(404).json({ error: 'projet introuvable' });
+  if (name) project.name = name;
+  if (color) project.color = color;
+  saveProjects(list);
+  res.json(list);
+});
+
 app.delete('/api/projects/:id', (req, res) => {
   let list = loadProjects();
   list = list.filter((p) => p.id !== req.params.id);
@@ -77,6 +88,45 @@ app.post('/api/events', async (req, res) => {
       calendarUrl,
     });
     res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/events', async (req, res) => {
+  try {
+    const { url, etag, uid, title, start, end, allDay, projectId } = req.body;
+    if (!url || !uid || !title || !start) {
+      return res.status(400).json({ error: 'url, uid, title et start requis' });
+    }
+    const projects = loadProjects();
+    const project = projects.find((p) => p.id === projectId);
+    const result = await updateEvent({
+      url,
+      etag,
+      uid,
+      title,
+      start,
+      end,
+      allDay,
+      category: project ? project.name : undefined,
+    });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/events/search', async (req, res) => {
+  try {
+    const { q, start, end } = req.query;
+    if (!q || !start || !end) return res.status(400).json({ error: 'q, start et end requis' });
+    const events = await fetchEvents({ start, end });
+    const needle = q.toLowerCase();
+    const matches = events.filter((ev) => (ev.title || '').toLowerCase().includes(needle));
+    res.json(matches);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });

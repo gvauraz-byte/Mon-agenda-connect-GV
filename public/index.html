@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Agenda projets</title>
-<link rel="apple-touch-icon" href="data:image/png;base64,">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Agenda">
 <style>
@@ -29,7 +28,9 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
+    gap: 10px;
+    flex-wrap: wrap;
   }
   header h1 { font-size: 18px; font-weight: 600; margin: 0; }
   .period-nav { display: flex; align-items: center; gap: 10px; }
@@ -44,7 +45,23 @@
   .period-nav button:disabled { opacity: 0.3; cursor: default; }
   .period-label { font-size: 14px; font-weight: 500; min-width: 170px; text-align: center; }
 
-  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  #search-row { display: flex; gap: 6px; margin-bottom: 10px; }
+  #search-row input {
+    flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid #D3D1C7; font-size: 13px;
+  }
+  #search-row button {
+    padding: 8px 12px; border-radius: 8px; border: 1px solid #D3D1C7; background: #fff; cursor: pointer; font-size: 13px;
+  }
+  #search-results {
+    background: #fff; border-radius: 10px; padding: 8px; margin-bottom: 10px; display: none;
+  }
+  .search-hit {
+    display: flex; align-items: center; gap: 8px; padding: 6px 4px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #F1EFE8;
+  }
+  .search-hit:hover { background: #F7F6F3; }
+  .search-hit .date { color: #888780; font-size: 12px; margin-left: auto; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; align-items: center; }
   .chip {
     display: flex; align-items: center; gap: 6px;
     padding: 5px 10px; border-radius: 999px;
@@ -52,50 +69,79 @@
     font-size: 12px; cursor: pointer; user-select: none;
   }
   .chip.off { opacity: 0.4; }
-  .chip .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
   .chip.add { border-style: dashed; }
+  .chip.ghost { border: none; background: none; color: #5F5E5A; text-decoration: underline; }
   .divider { border-top: 1px solid #D3D1C7; margin: 8px 0 10px; }
 
   select.zone-select { font-size: 12px; padding: 3px 6px; border-radius: 6px; border: 1px solid #D3D1C7; }
 
   .table-wrap { overflow-x: auto; background: #fff; border-radius: 10px; padding: 8px; }
-  table { border-collapse: collapse; table-layout: fixed; width: 100%; min-width: 900px; font-size: 11px; }
+  table { border-collapse: collapse; table-layout: fixed; width: 100%; min-width: 960px; font-size: 11px; }
   th { padding: 5px 2px; font-weight: 600; color: #5F5E5A; text-align: center; border-bottom: 1px solid #B4B2A9; }
   td {
     padding: 2px 3px; text-align: left; vertical-align: top;
-    white-space: nowrap; overflow: hidden; cursor: pointer;
+    overflow: hidden; cursor: pointer;
     border-bottom: 1px solid #EFEEEA;
   }
   td:hover { outline: 1px solid #B4B2A9; outline-offset: -1px; }
-  .ev-label { font-size: 9.5px; overflow: hidden; text-overflow: ellipsis; }
+  .ev-line { font-size: 9.5px; display: flex; align-items: center; gap: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ev-line .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .ev-more { font-size: 9.5px; color: #888780; }
   .hol-label { font-size: 9.5px; color: #A32D2D; overflow: hidden; text-overflow: ellipsis; }
 
-  #panel {
+  #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.25); z-index: 5; }
+  .sheet {
     display: none;
     position: fixed; left: 0; right: 0; bottom: 0;
     background: #fff; border-top: 1px solid #D3D1C7;
     border-radius: 16px 16px 0 0; padding: 16px;
-    max-height: 60vh; overflow-y: auto;
+    max-height: 70vh; overflow-y: auto;
     box-shadow: 0 -4px 20px rgba(0,0,0,0.12);
+    z-index: 6;
   }
-  #panel h3 { margin: 0 0 10px; font-size: 15px; }
-  #panel .close { float: right; border: none; background: none; font-size: 18px; cursor: pointer; }
+  .sheet h3 { margin: 0 0 10px; font-size: 15px; }
+  .sheet .close { float: right; border: none; background: none; font-size: 18px; cursor: pointer; }
+
   .ev-row {
-    display: flex; align-items: center; gap: 8px;
-    padding: 6px 0; border-bottom: 1px solid #F1EFE8; font-size: 13px;
+    padding: 8px 0; border-bottom: 1px solid #F1EFE8; font-size: 13px;
   }
+  .ev-row .row-top { display: flex; align-items: center; gap: 8px; }
   .ev-row .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .ev-row .del { margin-left: auto; border: none; background: none; color: #A32D2D; cursor: pointer; font-size: 12px; }
-  #add-form { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .ev-row .time { color: #888780; font-size: 12px; }
+  .ev-row .actions { margin-left: auto; display: flex; gap: 10px; }
+  .ev-row .actions button { border: none; background: none; cursor: pointer; font-size: 12px; }
+  .ev-row .actions .edit { color: #185FA5; }
+  .ev-row .actions .del { color: #A32D2D; }
+  .edit-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; padding: 10px; background: #F7F6F3; border-radius: 8px; }
+  .edit-form input[type=text] { flex: 1; min-width: 140px; padding: 7px; border-radius: 8px; border: 1px solid #D3D1C7; }
+  .edit-form input[type=time] { padding: 7px; border-radius: 8px; border: 1px solid #D3D1C7; }
+  .edit-form select { padding: 7px; border-radius: 8px; border: 1px solid #D3D1C7; }
+  .edit-form label.allday { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+  .edit-form .row-buttons { display: flex; gap: 6px; width: 100%; }
+  .edit-form button { padding: 7px 12px; border-radius: 8px; border: none; cursor: pointer; font-size: 12px; }
+  .edit-form .save { background: #2C2C2A; color: #fff; }
+  .edit-form .cancel { background: #E9E7E1; }
+
+  #add-form { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
   #add-form input[type=text] { flex: 1; min-width: 140px; padding: 8px; border-radius: 8px; border: 1px solid #D3D1C7; }
+  #add-form input[type=time] { padding: 8px; border-radius: 8px; border: 1px solid #D3D1C7; width: 90px; }
   #add-form select { padding: 8px; border-radius: 8px; border: 1px solid #D3D1C7; }
-  #add-form button {
+  #add-form label.allday { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+  #add-form button[type=submit] {
     padding: 8px 14px; border-radius: 8px; border: none;
     background: #2C2C2A; color: #fff; cursor: pointer;
   }
-  #overlay {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.25);
-  }
+
+  #projects-list { margin-bottom: 12px; }
+  .proj-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #F1EFE8; }
+  .proj-row input[type=color] { width: 28px; height: 28px; border: none; padding: 0; border-radius: 50%; overflow: hidden; }
+  .proj-row input[type=text] { flex: 1; padding: 7px; border-radius: 8px; border: 1px solid #D3D1C7; }
+  .proj-row button { border: none; background: none; color: #A32D2D; cursor: pointer; font-size: 12px; }
+  #new-project-row { display: flex; gap: 8px; align-items: center; }
+  #new-project-row input[type=text] { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #D3D1C7; }
+  #new-project-row input[type=color] { width: 32px; height: 32px; border: none; border-radius: 50%; }
+  #new-project-row button { padding: 8px 12px; border-radius: 8px; border: none; background: #2C2C2A; color: #fff; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -113,6 +159,12 @@
   </div>
 </header>
 
+<div id="search-row">
+  <input type="text" id="search-input" placeholder="Rechercher un evenement">
+  <button id="search-btn">Chercher</button>
+</div>
+<div id="search-results"></div>
+
 <div class="chip-row" id="project-chips"></div>
 <div class="chip-row" id="extra-chips"></div>
 <div class="divider"></div>
@@ -122,15 +174,31 @@
 </div>
 
 <div id="overlay"></div>
-<div id="panel">
-  <button class="close" id="panel-close">&times;</button>
+
+<div class="sheet" id="panel">
+  <button class="close" data-close="panel">&times;</button>
   <h3 id="panel-date"></h3>
   <div id="panel-events"></div>
   <form id="add-form">
     <input type="text" id="new-title" placeholder="Nouvel evenement" required>
+    <label class="allday"><input type="checkbox" id="new-allday" checked> Journee entiere</label>
+    <input type="time" id="new-start-time" value="09:00" style="display:none;">
+    <input type="time" id="new-end-time" value="10:00" style="display:none;">
     <select id="new-project"><option value="">Sans projet</option></select>
+    <select id="new-calendar"></select>
     <button type="submit">Ajouter</button>
   </form>
+</div>
+
+<div class="sheet" id="projects-panel">
+  <button class="close" data-close="projects-panel">&times;</button>
+  <h3>Gerer les projets</h3>
+  <div id="projects-list"></div>
+  <div id="new-project-row">
+    <input type="text" id="new-project-name" placeholder="Nom du nouveau projet">
+    <input type="color" id="new-project-color" value="#7F77DD">
+    <button id="new-project-add">Ajouter</button>
+  </div>
 </div>
 
 <script>
@@ -138,8 +206,10 @@ const START_YEAR = 2026;
 const START_MONTH = 7;
 const MONTH_NAMES = ['Janv','Fevr','Mars','Avr','Mai','Juin','Juil','Aout','Sept','Oct','Nov','Dec'];
 const DOW = ['Di','Lu','Ma','Me','Je','Ve','Sa'];
+const MAX_LINES = 3;
 
 let projects = [];
+let calendars = [];
 let activeProjects = new Set();
 let showHolidays = false;
 let showVacations = false;
@@ -148,9 +218,14 @@ let periodYear = START_YEAR;
 let eventsByDay = {};
 let holidaysCache = {};
 let vacationsCache = {};
+let currentPanelDate = null;
 
 function pad(n){ return String(n).padStart(2,'0'); }
 function iso(y,m,d){ return `${y}-${pad(m+1)}-${pad(d)}`; }
+function timeOf(isoStr){
+  if(!isoStr) return '';
+  return new Date(isoStr).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+}
 
 function getMonths(year){
   const list = [];
@@ -182,11 +257,23 @@ async function checkHealth(){
   }
 }
 
+async function loadCalendars(){
+  try{ calendars = await api('/api/calendars'); } catch(e){ calendars = []; }
+  const sel = document.getElementById('new-calendar');
+  sel.innerHTML = '';
+  calendars.forEach(c=>{
+    const opt = document.createElement('option');
+    opt.value = c.url; opt.textContent = c.displayName;
+    sel.appendChild(opt);
+  });
+}
+
 async function loadProjects(){
   projects = await api('/api/projects');
   activeProjects = new Set(projects.map(p=>p.id));
   renderProjectChips();
   renderProjectSelect();
+  renderProjectsPanel();
 }
 
 function renderProjectChips(){
@@ -202,27 +289,14 @@ function renderProjectChips(){
       renderProjectChips();
       renderCalendar();
     });
-    chip.addEventListener('contextmenu',(e)=>{
-      e.preventDefault();
-      if(confirm(`Supprimer le projet "${p.name}" ?`)){
-        api('/api/projects/'+p.id, {method:'DELETE'}).then(loadProjects).then(renderCalendar);
-      }
-    });
     wrap.appendChild(chip);
   });
-  const addChip = document.createElement('button');
-  addChip.type = 'button';
-  addChip.className = 'chip add';
-  addChip.textContent = '+ Projet';
-  addChip.addEventListener('click', async ()=>{
-    const name = prompt('Nom du projet ?');
-    if(!name) return;
-    const color = prompt('Couleur (hex, ex #7F77DD) ?', '#7F77DD') || '#7F77DD';
-    await api('/api/projects', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name, color})});
-    await loadProjects();
-    renderCalendar();
-  });
-  wrap.appendChild(addChip);
+  const manageChip = document.createElement('button');
+  manageChip.type = 'button';
+  manageChip.className = 'chip ghost';
+  manageChip.textContent = 'Gerer les projets';
+  manageChip.addEventListener('click', openProjectsPanel);
+  wrap.appendChild(manageChip);
 }
 
 function renderProjectSelect(){
@@ -273,14 +347,18 @@ function projectByName(name){
   return projects.find(p => p.name.toLowerCase() === String(name).toLowerCase()) || null;
 }
 
-async function loadEvents(){
-  const months = getMonths(periodYear);
+function periodRange(year){
+  const months = getMonths(year);
   const first = months[0];
   const last = months[months.length-1];
   const start = iso(first.y, first.m, 1) + 'T00:00:00Z';
   const lastDay = new Date(last.y, last.m+1, 0).getDate();
   const end = iso(last.y, last.m, lastDay) + 'T23:59:59Z';
+  return { start, end };
+}
 
+async function loadEvents(){
+  const { start, end } = periodRange(periodYear);
   eventsByDay = {};
   try{
     const events = await api(`/api/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
@@ -317,9 +395,24 @@ function updatePeriodLabel(){
   document.getElementById('prev-btn').disabled = periodYear <= START_YEAR;
 }
 
+async function prefetchHolidaysVacations(months){
+  const promises = [];
+  for(const m of months){
+    const daysInMonth = new Date(m.y, m.m+1, 0).getDate();
+    for(let d=1; d<=daysInMonth; d++){
+      const dateStr = iso(m.y, m.m, d);
+      if(showHolidays && !(dateStr in holidaysCache)) promises.push(getHoliday(dateStr));
+      if(showVacations) promises.push(getVacation(dateStr, vacationZone));
+    }
+  }
+  await Promise.all(promises);
+}
+
 async function renderCalendar(){
   updatePeriodLabel();
   const months = getMonths(periodYear);
+  if(showHolidays || showVacations) await prefetchHolidaysVacations(months);
+
   const table = document.getElementById('cal');
   table.innerHTML = '';
 
@@ -344,143 +437,80 @@ async function renderCalendar(){
       const isWeekend = wd === 'Sa' || wd === 'Di';
       const isMonday = wd === 'Lu';
 
-      const dayEvents = (eventsByDay[dateStr] || []);
-      const matched = dayEvents.map(ev=>({ev, project: projectByName((ev.categories||[])[0])}));
-      const withProject = matched.filter(x=>x.project);
-      const projSet = [...new Map(withProject.filter(x=>activeProjects.has(x.project.id)).map(x=>[x.project.id,x.project])).values()];
+      const dayEvents = (eventsByDay[dateStr] || []).slice().sort((a,b)=> (a.start||'').localeCompare(b.start||''));
 
       let bg = isWeekend ? '#F1EFE8' : 'transparent';
-      let textColor = '#2C2C2A';
-      let labelHtml = '';
-      if(projSet.length === 1){
-        bg = projSet[0].color + '26';
-        textColor = projSet[0].color;
-        const ev = withProject.find(x=>x.project.id===projSet[0].id).ev;
-        labelHtml = `<div class="ev-label" style="color:${textColor}">${ev.title}</div>`;
-      } else if(projSet.length > 1){
-        const stop = 100/projSet.length;
-        const stops = projSet.map((p,i)=> p.color+'26 '+(i*stop)+'%, '+p.color+'26 '+((i+1)*stop)+'%');
-        bg = 'linear-gradient(to right, '+stops.join(', ')+')';
-        const dots = projSet.map(p=>`<span class="dot" style="background:${p.color};display:inline-block;margin-right:2px;"></span>`).join('');
-        labelHtml = '<div style="margin-top:1px;">'+dots+'</div>';
-      } else if(dayEvents.length){
-        labelHtml = `<div class="ev-label">${dayEvents[0].title}</div>`;
-      }
-
       let border = 'border-bottom:1px solid #EFEEEA;';
       border += isMonday ? 'border-top:2px solid #B4B2A9;' : 'border-top:1px solid #F1EFE8;';
 
-      let dayNumHtml = `<span style="color:${textColor}">${d} ${wd}</span>`;
+      let numColor = '#2C2C2A';
       let holLabel = '';
-
       if(showHolidays){
         const hol = holidaysCache[dateStr];
         if(hol){
           border += 'border-left:3px solid #E24B4A;';
-          dayNumHtml = `<span style="color:#A32D2D;font-weight:600;">${d} ${wd}</span>`;
+          numColor = '#A32D2D';
           holLabel = `<div class="hol-label">${hol.name}</div>`;
         }
       }
-      let bgLayers = [bg];
       if(showVacations){
         const vac = vacationsCache[dateStr+'-'+vacationZone];
         if(vac){
-          bgLayers.unshift('repeating-linear-gradient(45deg, rgba(226,75,74,0.18) 0 1.5px, transparent 1.5px 5px)');
+          bg = 'repeating-linear-gradient(45deg, rgba(226,75,74,0.18) 0 1.5px, transparent 1.5px 5px)' + (bg !== 'transparent' ? ', '+bg : '');
         }
       }
-      const finalBg = bgLayers.length > 1 ? bgLayers.join(', ') : bgLayers[0];
 
-      td.style.cssText = `background:${finalBg};${border}`;
-      td.innerHTML = dayNumHtml + holLabel + labelHtml;
+      let linesHtml = '';
+      const shown = dayEvents.slice(0, MAX_LINES);
+      shown.forEach(ev=>{
+        const proj = projectByName((ev.categories||[])[0]);
+        const active = !proj || activeProjects.has(proj.id);
+        if(!active) return;
+        const color = proj ? proj.color : '#5F5E5A';
+        const t = ev.allDay ? '' : timeOf(ev.start) + ' ';
+        linesHtml += `<div class="ev-line" style="color:${color}"><span class="dot" style="background:${color}"></span>${t}${ev.title}</div>`;
+      });
+      if(dayEvents.length > MAX_LINES){
+        linesHtml += `<div class="ev-more">+${dayEvents.length - MAX_LINES}</div>`;
+      }
+
+      td.style.cssText = `background:${bg};${border}`;
+      td.innerHTML = `<div style="color:${numColor};font-weight:${holLabel?600:400};">${d} ${wd}</div>${holLabel}${linesHtml}`;
       td.addEventListener('click', ()=> openPanel(dateStr));
       row.appendChild(td);
     }
     table.appendChild(row);
   }
-
-  if(showHolidays || showVacations){
-    await prefetchHolidaysVacations(months);
-    renderCalendar_fast(months);
-  }
 }
 
-async function prefetchHolidaysVacations(months){
-  const promises = [];
-  for(const m of months){
-    const daysInMonth = new Date(m.y, m.m+1, 0).getDate();
-    for(let d=1; d<=daysInMonth; d++){
-      const dateStr = iso(m.y, m.m, d);
-      if(showHolidays && !(dateStr in holidaysCache)) promises.push(getHoliday(dateStr));
-      if(showVacations) promises.push(getVacation(dateStr, vacationZone));
-    }
-  }
-  await Promise.all(promises);
-}
-
-function renderCalendar_fast(months){
-  const table = document.getElementById('cal');
-  const rows = table.querySelectorAll('tr');
-  for(let d=1; d<=31; d++){
-    const row = rows[d];
-    if(!row) continue;
-    const cells = row.querySelectorAll('td');
-    months.forEach((m, idx)=>{
-      const daysInMonth = new Date(m.y, m.m+1, 0).getDate();
-      if(d > daysInMonth) return;
-      const dateStr = iso(m.y, m.m, d);
-      const td = cells[idx];
-      if(!td) return;
-
-      let extraLeft = '';
-      let numColor = null;
-      let holLabel = '';
-      if(showHolidays){
-        const hol = holidaysCache[dateStr];
-        if(hol){
-          extraLeft = 'border-left:3px solid #E24B4A;';
-          numColor = '#A32D2D';
-          holLabel = `<div class="hol-label">${hol.name}</div>`;
-        }
-      }
-      if(extraLeft) td.style.cssText += extraLeft;
-      if(numColor){
-        const span = td.querySelector('span');
-        if(span){ span.style.color = numColor; span.style.fontWeight = '600'; }
-        if(holLabel && !td.querySelector('.hol-label')){
-          span.insertAdjacentHTML('afterend', holLabel);
-        }
-      }
-      if(showVacations){
-        const vac = vacationsCache[dateStr+'-'+vacationZone];
-        if(vac){
-          const current = td.style.backgroundImage;
-          td.style.backgroundImage = 'repeating-linear-gradient(45deg, rgba(226,75,74,0.18) 0 1.5px, transparent 1.5px 5px)' + (current && current !== 'none' ? ', '+current : '');
-        }
-      }
-    });
-  }
-}
-
-let currentPanelDate = null;
 function openPanel(dateStr){
   currentPanelDate = dateStr;
-  document.getElementById('panel').style.display = 'block';
-  document.getElementById('overlay').style.display = 'block';
+  showSheet('panel');
   const d = new Date(dateStr+'T12:00:00');
   document.getElementById('panel-date').textContent = d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  document.getElementById('new-allday').checked = true;
+  document.getElementById('new-start-time').style.display = 'none';
+  document.getElementById('new-end-time').style.display = 'none';
   renderPanelEvents();
 }
-function closePanel(){
-  document.getElementById('panel').style.display = 'none';
+
+function showSheet(id){
+  document.getElementById(id).style.display = 'block';
+  document.getElementById('overlay').style.display = 'block';
+}
+function hideSheets(){
+  document.querySelectorAll('.sheet').forEach(s=> s.style.display = 'none');
   document.getElementById('overlay').style.display = 'none';
   currentPanelDate = null;
 }
-document.getElementById('panel-close').addEventListener('click', closePanel);
-document.getElementById('overlay').addEventListener('click', closePanel);
+document.getElementById('overlay').addEventListener('click', hideSheets);
+document.querySelectorAll('[data-close]').forEach(btn=>{
+  btn.addEventListener('click', hideSheets);
+});
 
 function renderPanelEvents(){
   const wrap = document.getElementById('panel-events');
-  const evts = eventsByDay[currentPanelDate] || [];
+  const evts = (eventsByDay[currentPanelDate] || []).slice().sort((a,b)=> (a.start||'').localeCompare(b.start||''));
   if(!evts.length){
     wrap.innerHTML = '<p style="color:#888780;font-size:13px;">Aucun evenement ce jour.</p>';
     return;
@@ -490,34 +520,201 @@ function renderPanelEvents(){
     const proj = projectByName((ev.categories||[])[0]);
     const row = document.createElement('div');
     row.className = 'ev-row';
-    row.innerHTML = `<span class="dot" style="background:${proj ? proj.color : '#B4B2A9'}"></span>
-      <span>${ev.title}</span>
-      <button class="del">Supprimer</button>`;
+    const timeLabel = ev.allDay ? 'Journee entiere' : (timeOf(ev.start) + (ev.end ? ' - ' + timeOf(ev.end) : ''));
+    row.innerHTML = `
+      <div class="row-top">
+        <span class="dot" style="background:${proj ? proj.color : '#B4B2A9'}"></span>
+        <span>${ev.title}</span>
+        <span class="time">${timeLabel}</span>
+        <span class="actions">
+          <button class="edit">Modifier</button>
+          <button class="del">Supprimer</button>
+        </span>
+      </div>`;
     row.querySelector('.del').addEventListener('click', async ()=>{
       await api('/api/events', {method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({url: ev.url, etag: ev.etag})});
       await loadEvents();
       renderPanelEvents();
       renderCalendar();
     });
+    row.querySelector('.edit').addEventListener('click', ()=> openEditForm(row, ev, proj));
     wrap.appendChild(row);
   });
 }
+
+function openEditForm(row, ev, proj){
+  const existing = row.querySelector('.edit-form');
+  if(existing){ existing.remove(); return; }
+  const form = document.createElement('div');
+  form.className = 'edit-form';
+  const startTime = ev.allDay ? '09:00' : timeOf(ev.start).replace(' ','');
+  const endTime = ev.allDay ? '10:00' : timeOf(ev.end).replace(' ','');
+  form.innerHTML = `
+    <input type="text" class="e-title" value="${ev.title.replace(/"/g,'&quot;')}">
+    <label class="allday"><input type="checkbox" class="e-allday" ${ev.allDay ? 'checked' : ''}> Journee entiere</label>
+    <input type="time" class="e-start" value="${startTime}" style="${ev.allDay?'display:none;':''}">
+    <input type="time" class="e-end" value="${endTime}" style="${ev.allDay?'display:none;':''}">
+    <select class="e-project"></select>
+    <div class="row-buttons">
+      <button class="save">Enregistrer</button>
+      <button class="cancel" type="button">Annuler</button>
+    </div>
+  `;
+  const sel = form.querySelector('.e-project');
+  sel.innerHTML = '<option value="">Sans projet</option>';
+  projects.forEach(p=>{
+    const opt = document.createElement('option');
+    opt.value = p.id; opt.textContent = p.name;
+    if(proj && proj.id === p.id) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  form.querySelector('.e-allday').addEventListener('change', (e)=>{
+    const on = e.target.checked;
+    form.querySelector('.e-start').style.display = on ? 'none' : 'inline-block';
+    form.querySelector('.e-end').style.display = on ? 'none' : 'inline-block';
+  });
+  form.querySelector('.cancel').addEventListener('click', ()=> form.remove());
+  form.querySelector('.save').addEventListener('click', async ()=>{
+    const title = form.querySelector('.e-title').value.trim();
+    if(!title) return;
+    const allDay = form.querySelector('.e-allday').checked;
+    const projectId = form.querySelector('.e-project').value;
+    let start, end;
+    if(allDay){
+      start = currentPanelDate; end = currentPanelDate;
+    } else {
+      const st = form.querySelector('.e-start').value || '09:00';
+      const et = form.querySelector('.e-end').value || st;
+      start = new Date(`${currentPanelDate}T${st}:00`).toISOString();
+      end = new Date(`${currentPanelDate}T${et}:00`).toISOString();
+    }
+    await api('/api/events', {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ url: ev.url, etag: ev.etag, uid: ev.uid, title, start, end, allDay, projectId })
+    });
+    await loadEvents();
+    renderPanelEvents();
+    renderCalendar();
+  });
+  row.appendChild(form);
+}
+
+document.getElementById('new-allday').addEventListener('change', (e)=>{
+  const on = e.target.checked;
+  document.getElementById('new-start-time').style.display = on ? 'none' : 'inline-block';
+  document.getElementById('new-end-time').style.display = on ? 'none' : 'inline-block';
+});
 
 document.getElementById('add-form').addEventListener('submit', async (e)=>{
   e.preventDefault();
   const title = document.getElementById('new-title').value.trim();
   const projectId = document.getElementById('new-project').value;
+  const calendarUrl = document.getElementById('new-calendar').value;
+  const allDay = document.getElementById('new-allday').checked;
   if(!title || !currentPanelDate) return;
+  let start, end;
+  if(allDay){
+    start = currentPanelDate; end = currentPanelDate;
+  } else {
+    const st = document.getElementById('new-start-time').value || '09:00';
+    const et = document.getElementById('new-end-time').value || st;
+    start = new Date(`${currentPanelDate}T${st}:00`).toISOString();
+    end = new Date(`${currentPanelDate}T${et}:00`).toISOString();
+  }
   await api('/api/events', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ title, start: currentPanelDate, end: currentPanelDate, allDay: true, projectId })
+    body: JSON.stringify({ title, start, end, allDay, projectId, calendarUrl })
   });
   document.getElementById('new-title').value = '';
   await loadEvents();
   renderPanelEvents();
   renderCalendar();
 });
+
+function openProjectsPanel(){
+  showSheet('projects-panel');
+}
+function renderProjectsPanel(){
+  const wrap = document.getElementById('projects-list');
+  wrap.innerHTML = '';
+  projects.forEach(p=>{
+    const row = document.createElement('div');
+    row.className = 'proj-row';
+    row.innerHTML = `
+      <input type="color" value="${p.color}">
+      <input type="text" value="${p.name.replace(/"/g,'&quot;')}">
+      <button>Supprimer</button>
+    `;
+    const colorInput = row.querySelector('input[type=color]');
+    const nameInput = row.querySelector('input[type=text]');
+    async function save(){
+      await api('/api/projects/'+p.id, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name: nameInput.value.trim(), color: colorInput.value})});
+      await loadProjects();
+      renderCalendar();
+    }
+    colorInput.addEventListener('change', save);
+    nameInput.addEventListener('blur', save);
+    row.querySelector('button').addEventListener('click', async ()=>{
+      if(!confirm(`Supprimer le projet "${p.name}" ?`)) return;
+      await api('/api/projects/'+p.id, {method:'DELETE'});
+      await loadProjects();
+      renderCalendar();
+    });
+    wrap.appendChild(row);
+  });
+}
+document.getElementById('new-project-add').addEventListener('click', async ()=>{
+  const name = document.getElementById('new-project-name').value.trim();
+  const color = document.getElementById('new-project-color').value;
+  if(!name) return;
+  await api('/api/projects', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name, color})});
+  document.getElementById('new-project-name').value = '';
+  await loadProjects();
+  renderCalendar();
+});
+
+async function runSearch(){
+  const q = document.getElementById('search-input').value.trim();
+  const resultsWrap = document.getElementById('search-results');
+  if(!q){ resultsWrap.style.display = 'none'; return; }
+  const start = iso(START_YEAR, START_MONTH, 1) + 'T00:00:00Z';
+  const endYear = START_YEAR + 5;
+  const end = iso(endYear, START_MONTH, 1) + 'T00:00:00Z';
+  resultsWrap.style.display = 'block';
+  resultsWrap.innerHTML = '<p style="font-size:13px;color:#888780;">Recherche en cours...</p>';
+  try{
+    const matches = await api(`/api/events/search?q=${encodeURIComponent(q)}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
+    if(!matches.length){
+      resultsWrap.innerHTML = '<p style="font-size:13px;color:#888780;">Aucun resultat.</p>';
+      return;
+    }
+    resultsWrap.innerHTML = '';
+    matches.slice(0,30).forEach(ev=>{
+      const day = ev.start.slice(0,10);
+      const div = document.createElement('div');
+      div.className = 'search-hit';
+      const proj = projectByName((ev.categories||[])[0]);
+      div.innerHTML = `<span class="dot" style="width:8px;height:8px;border-radius:50%;background:${proj?proj.color:'#B4B2A9'}"></span>${ev.title}<span class="date">${day}</span>`;
+      div.addEventListener('click', async ()=>{
+        const y = parseInt(day.slice(0,4),10);
+        const m = parseInt(day.slice(5,7),10) - 1;
+        periodYear = m >= START_MONTH ? y : y - 1;
+        if(periodYear < START_YEAR) periodYear = START_YEAR;
+        await loadEvents();
+        await renderCalendar();
+        openPanel(day);
+        resultsWrap.style.display = 'none';
+      });
+      resultsWrap.appendChild(div);
+    });
+  } catch(e){
+    resultsWrap.innerHTML = '<p style="font-size:13px;color:#A32D2D;">Erreur de recherche.</p>';
+  }
+}
+document.getElementById('search-btn').addEventListener('click', runSearch);
+document.getElementById('search-input').addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); runSearch(); } });
 
 document.getElementById('prev-btn').addEventListener('click', async ()=>{
   if(periodYear <= START_YEAR) return;
@@ -535,6 +732,7 @@ document.getElementById('next-btn').addEventListener('click', async ()=>{
   const ok = await checkHealth();
   await loadProjects();
   if(ok){
+    await loadCalendars();
     await loadEvents();
   }
   await renderCalendar();
