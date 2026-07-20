@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Agenda projets</title>
+<link rel="apple-touch-icon" href="data:image/png;base64,">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Agenda">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #F7F6F3;
+    color: #2C2C2A;
+    padding: 12px;
+  }
+  #setup-notice {
+    display: none;
+    background: #FAECE7;
+    color: #712B13;
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 14px;
+    font-size: 14px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  header h1 { font-size: 18px; font-weight: 600; margin: 0; }
+  .period-nav { display: flex; align-items: center; gap: 10px; }
+  .period-nav button {
+    border: 1px solid #D3D1C7;
+    background: #fff;
+    border-radius: 8px;
+    width: 32px; height: 32px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  .period-nav button:disabled { opacity: 0.3; cursor: default; }
+  .period-label { font-size: 14px; font-weight: 500; min-width: 170px; text-align: center; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: 999px;
+    border: 1px solid #D3D1C7; background: #fff;
+    font-size: 12px; cursor: pointer; user-select: none;
+  }
+  .chip.off { opacity: 0.4; }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .chip.add { border-style: dashed; }
+  .divider { border-top: 1px solid #D3D1C7; margin: 8px 0 10px; }
+
+  select.zone-select { font-size: 12px; padding: 3px 6px; border-radius: 6px; border: 1px solid #D3D1C7; }
+
+  .table-wrap { overflow-x: auto; background: #fff; border-radius: 10px; padding: 8px; }
+  table { border-collapse: collapse; table-layout: fixed; width: 100%; min-width: 900px; font-size: 11px; }
+  th { padding: 5px 2px; font-weight: 600; color: #5F5E5A; text-align: center; border-bottom: 1px solid #B4B2A9; }
+  td {
+    padding: 2px 3px; text-align: left; vertical-align: top;
+    white-space: nowrap; overflow: hidden; cursor: pointer;
+    border-bottom: 1px solid #EFEEEA;
+  }
+  td:hover { outline: 1px solid #B4B2A9; outline-offset: -1px; }
+  .ev-label { font-size: 9.5px; overflow: hidden; text-overflow: ellipsis; }
+  .hol-label { font-size: 9.5px; color: #A32D2D; overflow: hidden; text-overflow: ellipsis; }
+
+  #panel {
+    display: none;
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: #fff; border-top: 1px solid #D3D1C7;
+    border-radius: 16px 16px 0 0; padding: 16px;
+    max-height: 60vh; overflow-y: auto;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.12);
+  }
+  #panel h3 { margin: 0 0 10px; font-size: 15px; }
+  #panel .close { float: right; border: none; background: none; font-size: 18px; cursor: pointer; }
+  .ev-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 0; border-bottom: 1px solid #F1EFE8; font-size: 13px;
+  }
+  .ev-row .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .ev-row .del { margin-left: auto; border: none; background: none; color: #A32D2D; cursor: pointer; font-size: 12px; }
+  #add-form { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  #add-form input[type=text] { flex: 1; min-width: 140px; padding: 8px; border-radius: 8px; border: 1px solid #D3D1C7; }
+  #add-form select { padding: 8px; border-radius: 8px; border: 1px solid #D3D1C7; }
+  #add-form button {
+    padding: 8px 14px; border-radius: 8px; border: none;
+    background: #2C2C2A; color: #fff; cursor: pointer;
+  }
+  #overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.25);
+  }
+</style>
+</head>
+<body>
+
+<div id="setup-notice">
+  Le serveur n'est pas encore connecte a iCloud. Ajoute ICLOUD_USERNAME et ICLOUD_APP_PASSWORD dans les variables d'environnement, puis recharge la page.
+</div>
+
+<header>
+  <h1>Agenda projets</h1>
+  <div class="period-nav">
+    <button id="prev-btn" aria-label="Periode precedente">&#8592;</button>
+    <span class="period-label" id="period-label"></span>
+    <button id="next-btn" aria-label="Periode suivante">&#8594;</button>
+  </div>
+</header>
+
+<div class="chip-row" id="project-chips"></div>
+<div class="chip-row" id="extra-chips"></div>
+<div class="divider"></div>
+
+<div class="table-wrap">
+  <table id="cal"></table>
+</div>
+
+<div id="overlay"></div>
+<div id="panel">
+  <button class="close" id="panel-close">&times;</button>
+  <h3 id="panel-date"></h3>
+  <div id="panel-events"></div>
+  <form id="add-form">
+    <input type="text" id="new-title" placeholder="Nouvel evenement" required>
+    <select id="new-project"><option value="">Sans projet</option></select>
+    <button type="submit">Ajouter</button>
+  </form>
+</div>
+
+<script>
+const START_YEAR = 2026;
+const START_MONTH = 7;
+const MONTH_NAMES = ['Janv','Fevr','Mars','Avr','Mai','Juin','Juil','Aout','Sept','Oct','Nov','Dec'];
+const DOW = ['Di','Lu','Ma','Me','Je','Ve','Sa'];
+
+let projects = [];
+let activeProjects = new Set();
+let showHolidays = false;
+let showVacations = false;
+let vacationZone = 'B';
+let periodYear = START_YEAR;
+let eventsByDay = {};
+let holidaysCache = {};
+let vacationsCache = {};
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function iso(y,m,d){ return `${y}-${pad(m+1)}-${pad(d)}`; }
+
+function getMonths(year){
+  const list = [];
+  for(let i=0;i<12;i++){
+    const m = (START_MONTH + i) % 12;
+    const y = year + Math.floor((START_MONTH + i) / 12);
+    list.push({y, m});
+  }
+  return list;
+}
+
+async function api(path, opts){
+  const res = await fetch(path, opts);
+  if(!res.ok){
+    const err = await res.json().catch(()=>({error: res.statusText}));
+    throw new Error(err.error || 'Erreur serveur');
+  }
+  return res.json();
+}
+
+async function checkHealth(){
+  try{
+    const h = await api('/api/health');
+    document.getElementById('setup-notice').style.display = h.configured ? 'none' : 'block';
+    return h.configured;
+  } catch(e){
+    document.getElementById('setup-notice').style.display = 'block';
+    return false;
+  }
+}
+
+async function loadProjects(){
+  projects = await api('/api/projects');
+  activeProjects = new Set(projects.map(p=>p.id));
+  renderProjectChips();
+  renderProjectSelect();
+}
+
+function renderProjectChips(){
+  const wrap = document.getElementById('project-chips');
+  wrap.innerHTML = '';
+  projects.forEach(p=>{
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip' + (activeProjects.has(p.id) ? '' : ' off');
+    chip.innerHTML = `<span class="dot" style="background:${p.color}"></span>${p.name}`;
+    chip.addEventListener('click', ()=>{
+      if(activeProjects.has(p.id)) activeProjects.delete(p.id); else activeProjects.add(p.id);
+      renderProjectChips();
+      renderCalendar();
+    });
+    chip.addEventListener('contextmenu',(e)=>{
+      e.preventDefault();
+      if(confirm(`Supprimer le projet "${p.name}" ?`)){
+        api('/api/projects/'+p.id, {method:'DELETE'}).then(loadProjects).then(renderCalendar);
+      }
+    });
+    wrap.appendChild(chip);
+  });
+  const addChip = document.createElement('button');
+  addChip.type = 'button';
+  addChip.className = 'chip add';
+  addChip.textContent = '+ Projet';
+  addChip.addEventListener('click', async ()=>{
+    const name = prompt('Nom du projet ?');
+    if(!name) return;
+    const color = prompt('Couleur (hex, ex #7F77DD) ?', '#7F77DD') || '#7F77DD';
+    await api('/api/projects', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name, color})});
+    await loadProjects();
+    renderCalendar();
+  });
+  wrap.appendChild(addChip);
+}
+
+function renderProjectSelect(){
+  const sel = document.getElementById('new-project');
+  sel.innerHTML = '<option value="">Sans projet</option>';
+  projects.forEach(p=>{
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  });
+}
+
+function renderExtraChips(){
+  const wrap = document.getElementById('extra-chips');
+  wrap.innerHTML = '';
+
+  const holChip = document.createElement('button');
+  holChip.type = 'button';
+  holChip.className = 'chip' + (showHolidays ? '' : ' off');
+  holChip.innerHTML = '<span class="dot" style="background:#E24B4A"></span>Jours feries';
+  holChip.addEventListener('click', ()=>{ showHolidays = !showHolidays; renderExtraChips(); renderCalendar(); });
+  wrap.appendChild(holChip);
+
+  const vacChip = document.createElement('button');
+  vacChip.type = 'button';
+  vacChip.className = 'chip' + (showVacations ? '' : ' off');
+  vacChip.innerHTML = '<span class="dot" style="background:#E24B4A"></span>Vacances scolaires';
+  vacChip.addEventListener('click', ()=>{ showVacations = !showVacations; renderExtraChips(); renderCalendar(); });
+  wrap.appendChild(vacChip);
+
+  if(showVacations){
+    const sel = document.createElement('select');
+    sel.className = 'zone-select';
+    ['A','B','C'].forEach(z=>{
+      const opt = document.createElement('option');
+      opt.value = z; opt.textContent = 'Zone ' + z;
+      if(z === vacationZone) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', (e)=>{ vacationZone = e.target.value; renderCalendar(); });
+    wrap.appendChild(sel);
+  }
+}
+
+function projectByName(name){
+  if(!name) return null;
+  return projects.find(p => p.name.toLowerCase() === String(name).toLowerCase()) || null;
+}
+
+async function loadEvents(){
+  const months = getMonths(periodYear);
+  const first = months[0];
+  const last = months[months.length-1];
+  const start = iso(first.y, first.m, 1) + 'T00:00:00Z';
+  const lastDay = new Date(last.y, last.m+1, 0).getDate();
+  const end = iso(last.y, last.m, lastDay) + 'T23:59:59Z';
+
+  eventsByDay = {};
+  try{
+    const events = await api(`/api/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
+    events.forEach(ev=>{
+      if(!ev.start) return;
+      const day = ev.start.slice(0,10);
+      if(!eventsByDay[day]) eventsByDay[day] = [];
+      eventsByDay[day].push(ev);
+    });
+  } catch(e){
+    console.error(e);
+  }
+}
+
+async function getHoliday(dateStr){
+  if(dateStr in holidaysCache) return holidaysCache[dateStr];
+  const h = await api('/api/holidays?date='+dateStr);
+  holidaysCache[dateStr] = h;
+  return h;
+}
+async function getVacation(dateStr, zone){
+  const key = dateStr+'-'+zone;
+  if(key in vacationsCache) return vacationsCache[key];
+  const v = await api(`/api/vacation?date=${dateStr}&zone=${zone}`);
+  vacationsCache[key] = v;
+  return v;
+}
+
+function updatePeriodLabel(){
+  const months = getMonths(periodYear);
+  const first = months[0], last = months[months.length-1];
+  document.getElementById('period-label').textContent =
+    `${MONTH_NAMES[first.m]} ${first.y} - ${MONTH_NAMES[last.m]} ${last.y}`;
+  document.getElementById('prev-btn').disabled = periodYear <= START_YEAR;
+}
+
+async function renderCalendar(){
+  updatePeriodLabel();
+  const months = getMonths(periodYear);
+  const table = document.getElementById('cal');
+  table.innerHTML = '';
+
+  const head = document.createElement('tr');
+  months.forEach(m=>{
+    const th = document.createElement('th');
+    th.textContent = MONTH_NAMES[m.m] + ' ' + m.y;
+    head.appendChild(th);
+  });
+  table.appendChild(head);
+
+  for(let d=1; d<=31; d++){
+    const row = document.createElement('tr');
+    for(const m of months){
+      const td = document.createElement('td');
+      const daysInMonth = new Date(m.y, m.m+1, 0).getDate();
+      if(d > daysInMonth){ row.appendChild(td); continue; }
+
+      const dateStr = iso(m.y, m.m, d);
+      const dateObj = new Date(m.y, m.m, d);
+      const wd = DOW[dateObj.getDay()];
+      const isWeekend = wd === 'Sa' || wd === 'Di';
+      const isMonday = wd === 'Lu';
+
+      const dayEvents = (eventsByDay[dateStr] || []);
+      const matched = dayEvents.map(ev=>({ev, project: projectByName((ev.categories||[])[0])}));
+      const withProject = matched.filter(x=>x.project);
+      const projSet = [...new Map(withProject.filter(x=>activeProjects.has(x.project.id)).map(x=>[x.project.id,x.project])).values()];
+
+      let bg = isWeekend ? '#F1EFE8' : 'transparent';
+      let textColor = '#2C2C2A';
+      let labelHtml = '';
+      if(projSet.length === 1){
+        bg = projSet[0].color + '26';
+        textColor = projSet[0].color;
+        const ev = withProject.find(x=>x.project.id===projSet[0].id).ev;
+        labelHtml = `<div class="ev-label" style="color:${textColor}">${ev.title}</div>`;
+      } else if(projSet.length > 1){
+        const stop = 100/projSet.length;
+        const stops = projSet.map((p,i)=> p.color+'26 '+(i*stop)+'%, '+p.color+'26 '+((i+1)*stop)+'%');
+        bg = 'linear-gradient(to right, '+stops.join(', ')+')';
+        const dots = projSet.map(p=>`<span class="dot" style="background:${p.color};display:inline-block;margin-right:2px;"></span>`).join('');
+        labelHtml = '<div style="margin-top:1px;">'+dots+'</div>';
+      } else if(dayEvents.length){
+        labelHtml = `<div class="ev-label">${dayEvents[0].title}</div>`;
+      }
+
+      let border = 'border-bottom:1px solid #EFEEEA;';
+      border += isMonday ? 'border-top:2px solid #B4B2A9;' : 'border-top:1px solid #F1EFE8;';
+
+      let dayNumHtml = `<span style="color:${textColor}">${d} ${wd}</span>`;
+      let holLabel = '';
+
+      if(showHolidays){
+        const hol = holidaysCache[dateStr];
+        if(hol){
+          border += 'border-left:3px solid #E24B4A;';
+          dayNumHtml = `<span style="color:#A32D2D;font-weight:600;">${d} ${wd}</span>`;
+          holLabel = `<div class="hol-label">${hol.name}</div>`;
+        }
+      }
+      let bgLayers = [bg];
+      if(showVacations){
+        const vac = vacationsCache[dateStr+'-'+vacationZone];
+        if(vac){
+          bgLayers.unshift('repeating-linear-gradient(45deg, rgba(226,75,74,0.18) 0 1.5px, transparent 1.5px 5px)');
+        }
+      }
+      const finalBg = bgLayers.length > 1 ? bgLayers.join(', ') : bgLayers[0];
+
+      td.style.cssText = `background:${finalBg};${border}`;
+      td.innerHTML = dayNumHtml + holLabel + labelHtml;
+      td.addEventListener('click', ()=> openPanel(dateStr));
+      row.appendChild(td);
+    }
+    table.appendChild(row);
+  }
+
+  if(showHolidays || showVacations){
+    await prefetchHolidaysVacations(months);
+    renderCalendar_fast(months);
+  }
+}
+
+async function prefetchHolidaysVacations(months){
+  const promises = [];
+  for(const m of months){
+    const daysInMonth = new Date(m.y, m.m+1, 0).getDate();
+    for(let d=1; d<=daysInMonth; d++){
+      const dateStr = iso(m.y, m.m, d);
+      if(showHolidays && !(dateStr in holidaysCache)) promises.push(getHoliday(dateStr));
+      if(showVacations) promises.push(getVacation(dateStr, vacationZone));
+    }
+  }
+  await Promise.all(promises);
+}
+
+function renderCalendar_fast(months){
+  const table = document.getElementById('cal');
+  const rows = table.querySelectorAll('tr');
+  for(let d=1; d<=31; d++){
+    const row = rows[d];
+    if(!row) continue;
+    const cells = row.querySelectorAll('td');
+    months.forEach((m, idx)=>{
+      const daysInMonth = new Date(m.y, m.m+1, 0).getDate();
+      if(d > daysInMonth) return;
+      const dateStr = iso(m.y, m.m, d);
+      const td = cells[idx];
+      if(!td) return;
+
+      let extraLeft = '';
+      let numColor = null;
+      let holLabel = '';
+      if(showHolidays){
+        const hol = holidaysCache[dateStr];
+        if(hol){
+          extraLeft = 'border-left:3px solid #E24B4A;';
+          numColor = '#A32D2D';
+          holLabel = `<div class="hol-label">${hol.name}</div>`;
+        }
+      }
+      if(extraLeft) td.style.cssText += extraLeft;
+      if(numColor){
+        const span = td.querySelector('span');
+        if(span){ span.style.color = numColor; span.style.fontWeight = '600'; }
+        if(holLabel && !td.querySelector('.hol-label')){
+          span.insertAdjacentHTML('afterend', holLabel);
+        }
+      }
+      if(showVacations){
+        const vac = vacationsCache[dateStr+'-'+vacationZone];
+        if(vac){
+          const current = td.style.backgroundImage;
+          td.style.backgroundImage = 'repeating-linear-gradient(45deg, rgba(226,75,74,0.18) 0 1.5px, transparent 1.5px 5px)' + (current && current !== 'none' ? ', '+current : '');
+        }
+      }
+    });
+  }
+}
+
+let currentPanelDate = null;
+function openPanel(dateStr){
+  currentPanelDate = dateStr;
+  document.getElementById('panel').style.display = 'block';
+  document.getElementById('overlay').style.display = 'block';
+  const d = new Date(dateStr+'T12:00:00');
+  document.getElementById('panel-date').textContent = d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  renderPanelEvents();
+}
+function closePanel(){
+  document.getElementById('panel').style.display = 'none';
+  document.getElementById('overlay').style.display = 'none';
+  currentPanelDate = null;
+}
+document.getElementById('panel-close').addEventListener('click', closePanel);
+document.getElementById('overlay').addEventListener('click', closePanel);
+
+function renderPanelEvents(){
+  const wrap = document.getElementById('panel-events');
+  const evts = eventsByDay[currentPanelDate] || [];
+  if(!evts.length){
+    wrap.innerHTML = '<p style="color:#888780;font-size:13px;">Aucun evenement ce jour.</p>';
+    return;
+  }
+  wrap.innerHTML = '';
+  evts.forEach(ev=>{
+    const proj = projectByName((ev.categories||[])[0]);
+    const row = document.createElement('div');
+    row.className = 'ev-row';
+    row.innerHTML = `<span class="dot" style="background:${proj ? proj.color : '#B4B2A9'}"></span>
+      <span>${ev.title}</span>
+      <button class="del">Supprimer</button>`;
+    row.querySelector('.del').addEventListener('click', async ()=>{
+      await api('/api/events', {method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({url: ev.url, etag: ev.etag})});
+      await loadEvents();
+      renderPanelEvents();
+      renderCalendar();
+    });
+    wrap.appendChild(row);
+  });
+}
+
+document.getElementById('add-form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const title = document.getElementById('new-title').value.trim();
+  const projectId = document.getElementById('new-project').value;
+  if(!title || !currentPanelDate) return;
+  await api('/api/events', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ title, start: currentPanelDate, end: currentPanelDate, allDay: true, projectId })
+  });
+  document.getElementById('new-title').value = '';
+  await loadEvents();
+  renderPanelEvents();
+  renderCalendar();
+});
+
+document.getElementById('prev-btn').addEventListener('click', async ()=>{
+  if(periodYear <= START_YEAR) return;
+  periodYear -= 1;
+  await loadEvents();
+  renderCalendar();
+});
+document.getElementById('next-btn').addEventListener('click', async ()=>{
+  periodYear += 1;
+  await loadEvents();
+  renderCalendar();
+});
+
+(async function init(){
+  const ok = await checkHealth();
+  await loadProjects();
+  if(ok){
+    await loadEvents();
+  }
+  await renderCalendar();
+})();
+</script>
+</body>
+</html>
