@@ -16,7 +16,7 @@
   },
   {
     "id": "prop-1784574547735-b8l8ixw6",
-    "status": "pending",
+    "status": "accepted",
     "createdAt": "2026-07-20T19:09:07.735Z",
     "title": "essai demande WhatsApp",
     "start": "2027-01-05T08:00:00.000Z",
@@ -27,6 +27,7 @@
     "projectName": "Perso",
     "projectColor": "#1d9e75",
     "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/home/",
-    "contactLabel": ""
+    "contactLabel": "",
+    "respondedAt": "2026-07-20T19:09:39.186Z"
   }
 ]
