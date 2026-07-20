@@ -67,6 +67,8 @@ function statusLabel(status){
   return `<span style="font-size:11px;color:${meta.color};margin-left:6px;">&#9679; ${meta.label}</span>`;
 }
 
+const VIEW_TOKEN = (window.location.pathname.match(/\/view\/([^/]+)/) || [])[1] || '';
+
 async function api(path){
   const res = await fetch(path);
   if(!res.ok) throw new Error('Erreur serveur');
@@ -74,7 +76,7 @@ async function api(path){
 }
 
 async function loadProjects(){
-  projects = await api('/api/projects');
+  projects = await api('/api/projects?viewToken=' + encodeURIComponent(VIEW_TOKEN));
   activeProjects = new Set(projects.map(p=>p.id));
   renderProjectChips();
 }
@@ -157,7 +159,7 @@ async function loadEvents(){
   eventsByDay = {};
   allEventsList = [];
   try{
-    const events = await api(`/api/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
+    const events = await api(`/api/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&viewToken=${encodeURIComponent(VIEW_TOKEN)}`);
     allEventsList = events.filter(ev=>ev.start);
     events.forEach(ev=>{
       if(!ev.start) return;

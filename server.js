@@ -8,6 +8,8 @@ import { isHoliday, isVacation } from './lib/holidays.js';
 import { loadSubmissions, addSubmission, removeSubmission } from './lib/submissions.js';
 import { renderAnnualPdf, getMonths, isoDate, daysBetween } from './lib/pdf.js';
 import { isDurable } from './lib/datastore.js';
+import { loadShareLinks, addShareLink, findShareLink, removeShareLink } from './lib/shareLinks.js';
+import { loadProposals, addProposal, findProposal, updateProposal, removeProposal } from './lib/proposals.js';
 
 dotenv.config();
 
@@ -17,16 +19,61 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/view/:token', (req, res) => {
-  if (!process.env.SHARE_TOKEN || req.params.token !== process.env.SHARE_TOKEN) {
-    return res.status(404).send('Page introuvable.');
+// Determine what a read-only visitor is allowed to see, based on the token in their link.
+// Returns null when the visitor should see everything (legacy full link, or no token at all
+// which means this is the main app calling its own API). Returns { projectIds, includeUntagged }
+// when the visitor is restricted to specific projects.
+async function resolveViewScope(token) {
+  if (!token) return null;
+  if (process.env.SHARE_TOKEN && token === process.env.SHARE_TOKEN) return null;
+  const link = await findShareLink(token);
+  if (!link) return { projectIds: ['__aucun__'], includeUntagged: false };
+  if (!link.projectIds || link.projectIds.length === 0) return null;
+  return { projectIds: link.projectIds, includeUntagged: Boolean(link.includeUntagged) };
+}
+
+app.get('/view/:token', async (req, res) => {
+  try {
+    const token = req.params.token;
+    const legacyOk = Boolean(process.env.SHARE_TOKEN) && token === process.env.SHARE_TOKEN;
+    const link = legacyOk ? null : await findShareLink(token);
+    if (!legacyOk && !link) return res.status(404).send('Page introuvable.');
+    res.sendFile(path.join(__dirname, 'views', 'view.html'));
+  } catch (err) {
+    res.status(500).send('Erreur serveur.');
   }
-  res.sendFile(path.join(__dirname, 'views', 'view.html'));
 });
 
 app.get('/api/share-link', (req, res) => {
   if (!process.env.SHARE_TOKEN) return res.json({ configured: false });
   res.json({ configured: true, path: `/view/${process.env.SHARE_TOKEN}` });
+});
+
+app.get('/api/share-links', async (req, res) => {
+  try {
+    res.json(await loadShareLinks());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/share-links', async (req, res) => {
+  try {
+    const { label, projectIds, includeUntagged } = req.body;
+    const entry = await addShareLink({ label, projectIds, includeUntagged });
+    res.json({ ok: true, ...entry, path: `/view/${entry.id}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/share-links/:id', async (req, res) => {
+  try {
+    const list = await removeShareLink(req.params.id);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/api/health', (req, res) => {
@@ -48,7 +95,12 @@ app.get('/api/calendars', async (req, res) => {
 
 app.get('/api/projects', async (req, res) => {
   try {
-    res.json(await loadProjects());
+    let list = await loadProjects();
+    const scope = await resolveViewScope(req.query.viewToken);
+    if (scope) {
+      list = list.filter((p) => scope.projectIds.includes(p.id));
+    }
+    res.json(list);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -98,9 +150,21 @@ app.delete('/api/projects/:id', async (req, res) => {
 
 app.get('/api/events', async (req, res) => {
   try {
-    const { start, end } = req.query;
+    const { start, end, viewToken } = req.query;
     if (!start || !end) return res.status(400).json({ error: 'start et end requis (ISO)' });
-    const events = await fetchEvents({ start, end });
+    let events = await fetchEvents({ start, end });
+    const scope = await resolveViewScope(viewToken);
+    if (scope) {
+      const projects = await loadProjects();
+      const allowedNames = new Set(
+        projects.filter((p) => scope.projectIds.includes(p.id)).map((p) => p.name.toLowerCase())
+      );
+      events = events.filter((ev) => {
+        const cats = (ev.categories || []).map((c) => c.toLowerCase());
+        if (!cats.length) return scope.includeUntagged;
+        return cats.some((c) => allowedNames.has(c));
+      });
+    }
     res.json(events);
   } catch (err) {
     console.error(err);
@@ -265,6 +329,96 @@ app.post('/api/submissions/:id/approve', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/proposals', async (req, res) => {
+  try {
+    res.json(await loadProposals());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/proposals', async (req, res) => {
+  try {
+    const { title, start, end, allDay, location, projectId, calendarUrl, contactLabel } = req.body;
+    if (!title || !start) return res.status(400).json({ error: 'title et start requis' });
+    const projects = await loadProjects();
+    const project = projects.find((p) => p.id === projectId);
+    const entry = await addProposal({
+      title,
+      start,
+      end: end || start,
+      allDay: Boolean(allDay),
+      location: location || '',
+      projectId: project ? project.id : '',
+      projectName: project ? project.name : '',
+      projectColor: project ? project.color : '',
+      calendarUrl: calendarUrl || '',
+      contactLabel: contactLabel || '',
+    });
+    res.json({ ok: true, id: entry.id, path: `/proposition.html?id=${entry.id}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Public: la personne qui recoit le lien consulte les details de la proposition.
+app.get('/api/proposals/:id', async (req, res) => {
+  try {
+    const prop = await findProposal(req.params.id);
+    if (!prop) return res.status(404).json({ error: 'Proposition introuvable ou deja traitee.' });
+    res.json(prop);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Public: la personne accepte -> l'evenement est cree automatiquement dans l'iCloud de Georges.
+app.post('/api/proposals/:id/accept', async (req, res) => {
+  try {
+    const prop = await findProposal(req.params.id);
+    if (!prop) return res.status(404).json({ error: 'Proposition introuvable ou deja traitee.' });
+    if (prop.status !== 'pending') return res.status(409).json({ error: 'Cette proposition a deja ete traitee.' });
+
+    await createEvent({
+      title: prop.title,
+      start: prop.start,
+      end: prop.end,
+      allDay: prop.allDay,
+      category: prop.projectName || undefined,
+      calendarUrl: prop.calendarUrl || undefined,
+      location: prop.location,
+    });
+
+    await updateProposal(prop.id, { status: 'accepted', respondedAt: new Date().toISOString() });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Public: la personne refuse -> rien n'est ajoute a l'agenda.
+app.post('/api/proposals/:id/decline', async (req, res) => {
+  try {
+    const prop = await findProposal(req.params.id);
+    if (!prop) return res.status(404).json({ error: 'Proposition introuvable ou deja traitee.' });
+    if (prop.status !== 'pending') return res.status(409).json({ error: 'Cette proposition a deja ete traitee.' });
+    await updateProposal(prop.id, { status: 'declined', respondedAt: new Date().toISOString() });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/proposals/:id', async (req, res) => {
+  try {
+    const list = await removeProposal(req.params.id);
+    res.json(list);
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

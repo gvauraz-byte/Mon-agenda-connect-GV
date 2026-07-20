@@ -200,6 +200,13 @@
     <select id="new-calendar"></select>
     <button type="submit">Ajouter</button>
   </form>
+  <div style="margin-top:10px;padding-top:10px;border-top:1px solid #F1EFE8;">
+    <p style="font-size:12px;color:#888780;margin:0 0 6px;">Ou propose ce rendez-vous par lien (a envoyer sur WhatsApp) : il ne sera ajoute a ton agenda que si la personne l'accepte.</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+      <input type="text" id="new-whatsapp-phone" placeholder="Numero WhatsApp (optionnel)" style="flex:1;min-width:160px;padding:8px;border-radius:8px;border:1px solid #D3D1C7;">
+      <button type="button" id="propose-whatsapp-btn" style="padding:8px 12px;border-radius:8px;border:1px solid #185FA5;background:#fff;color:#185FA5;cursor:pointer;">Proposer par WhatsApp</button>
+    </div>
+  </div>
 </div>
 
 <div class="sheet" id="projects-panel">
@@ -226,6 +233,30 @@
   <h3>Soumissions a valider</h3>
   <p style="font-size:12px;color:#888780;margin:8px 0;">Lien generique a partager (projet a la charge du partenaire) : <span id="generic-form-link" style="color:#185FA5;word-break:break-all;"></span> <button id="copy-generic-link" type="button" style="border:none;background:none;color:#185FA5;cursor:pointer;font-size:12px;">Copier</button></p>
   <div id="submissions-list"></div>
+</div>
+
+<div class="sheet" id="proposals-panel">
+  <button class="close" data-close="proposals-panel">&times;</button>
+  <h3>Propositions envoyees</h3>
+  <p style="font-size:12px;color:#888780;margin:8px 0;">Rendez-vous proposes par lien WhatsApp, et leur statut.</p>
+  <div id="proposals-list"></div>
+</div>
+
+<div class="sheet" id="share-links-panel">
+  <button class="close" data-close="share-links-panel">&times;</button>
+  <h3>Liens de partage (lecture seule)</h3>
+  <p style="font-size:12px;color:#888780;margin:8px 0;">Choisis les projets qu'une personne pourra voir avec ce lien, puis genere-le. Elle ne pourra rien modifier.</p>
+  <div id="share-links-list"></div>
+  <div style="margin-top:14px;padding-top:12px;border-top:1px solid #F1EFE8;">
+    <p style="font-size:12px;font-weight:500;margin:0 0 6px;">Nouveau lien</p>
+    <input type="text" id="new-share-label" placeholder="Nom du lien (optionnel, ex: Client A)" style="width:100%;padding:8px;border-radius:8px;border:1px solid #D3D1C7;margin-bottom:8px;">
+    <div id="new-share-projects" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;"></div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:10px;">
+      <input type="checkbox" id="new-share-untagged"> Inclure aussi les evenements sans projet
+    </label>
+    <p style="font-size:11px;color:#888780;margin:0 0 8px;">Ne coche aucun projet pour partager tout l'agenda.</p>
+    <button type="button" id="new-share-add" style="padding:8px 14px;border-radius:8px;border:none;background:#2C2C2A;color:#fff;cursor:pointer;">Generer le lien</button>
+  </div>
 </div>
 
 <script>
@@ -860,21 +891,12 @@ async function renderToolsChips(){
   });
   wrap.appendChild(pdfChip);
 
-  try{
-    const share = await api('/api/share-link');
-    if(share.configured){
-      const shareChip = document.createElement('button');
-      shareChip.type = 'button';
-      shareChip.className = 'chip';
-      shareChip.textContent = 'Copier le lien lecture seule';
-      shareChip.addEventListener('click', ()=>{
-        const url = window.location.origin + share.path;
-        navigator.clipboard?.writeText(url);
-        alert('Lien copie :\n'+url);
-      });
-      wrap.appendChild(shareChip);
-    }
-  } catch(e){}
+  const shareChip = document.createElement('button');
+  shareChip.type = 'button';
+  shareChip.className = 'chip';
+  shareChip.textContent = 'Liens de partage';
+  shareChip.addEventListener('click', openSharePanel);
+  wrap.appendChild(shareChip);
 
   const subChip = document.createElement('button');
   subChip.type = 'button';
@@ -882,6 +904,13 @@ async function renderToolsChips(){
   subChip.textContent = pendingSubmissionsCount ? `Soumissions (${pendingSubmissionsCount})` : 'Soumissions';
   subChip.addEventListener('click', openSubmissionsPanel);
   wrap.appendChild(subChip);
+
+  const propChip = document.createElement('button');
+  propChip.type = 'button';
+  propChip.className = 'chip';
+  propChip.textContent = pendingProposalsCount ? `Propositions (${pendingProposalsCount})` : 'Propositions';
+  propChip.addEventListener('click', openProposalsPanel);
+  wrap.appendChild(propChip);
 }
 
 async function refreshSubmissionsCount(){
@@ -889,6 +918,14 @@ async function refreshSubmissionsCount(){
     const list = await api('/api/submissions');
     pendingSubmissionsCount = list.length;
   } catch(e){ pendingSubmissionsCount = 0; }
+}
+
+let pendingProposalsCount = 0;
+async function refreshProposalsCount(){
+  try{
+    const list = await api('/api/proposals');
+    pendingProposalsCount = list.filter(p=>p.status==='pending').length;
+  } catch(e){ pendingProposalsCount = 0; }
 }
 
 function openListPanel(projectId){
@@ -1021,6 +1058,201 @@ async function renderSubmissionsPanel(){
   });
 }
 
+async function openSharePanel(){
+  showSheet('share-links-panel');
+  await renderSharePanel();
+}
+
+async function renderSharePanel(){
+  const wrap = document.getElementById('share-links-list');
+  wrap.innerHTML = '<p style="font-size:13px;color:#888780;">Chargement...</p>';
+
+  const projWrap = document.getElementById('new-share-projects');
+  projWrap.innerHTML = '';
+  projects.forEach(p=>{
+    const label = document.createElement('label');
+    label.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:12px;border:1px solid #D3D1C7;border-radius:999px;padding:4px 10px;cursor:pointer;';
+    label.innerHTML = `<input type="checkbox" value="${p.id}" style="margin:0;"><span class="dot" style="width:8px;height:8px;border-radius:50%;background:${p.color};display:inline-block;"></span>${p.name}`;
+    projWrap.appendChild(label);
+  });
+
+  let entries = [];
+  try{ entries = await api('/api/share-links'); } catch(e){}
+
+  let legacyUrl = '';
+  try{
+    const legacy = await api('/api/share-link');
+    if(legacy.configured) legacyUrl = window.location.origin + legacy.path;
+  } catch(e){}
+
+  if(!entries.length && !legacyUrl){
+    wrap.innerHTML = '<p style="font-size:13px;color:#888780;">Aucun lien pour le moment.</p>';
+    return;
+  }
+
+  wrap.innerHTML = '';
+  if(legacyUrl){
+    const row = document.createElement('div');
+    row.className = 'ev-row';
+    row.innerHTML = `
+      <div class="row-top"><span style="font-weight:500;">Lien complet (tous les projets)</span></div>
+      <div style="font-size:12px;color:#888780;margin-top:4px;word-break:break-all;">${legacyUrl}</div>
+      <div style="margin-top:6px;"><button type="button" class="copy" style="border:none;background:none;color:#185FA5;cursor:pointer;font-size:12px;">Copier</button></div>
+    `;
+    row.querySelector('.copy').addEventListener('click', ()=>{
+      navigator.clipboard?.writeText(legacyUrl);
+      alert('Lien copie :\n'+legacyUrl);
+    });
+    wrap.appendChild(row);
+  }
+
+  entries.forEach(entry=>{
+    const names = entry.projectIds.length
+      ? entry.projectIds.map(id=> projects.find(p=>p.id===id)?.name || id).join(', ')
+      : 'Tous les projets';
+    const url = `${window.location.origin}/view/${entry.id}`;
+    const row = document.createElement('div');
+    row.className = 'ev-row';
+    row.innerHTML = `
+      <div class="row-top"><span style="font-weight:500;">${entry.label || names}</span></div>
+      <div style="font-size:12px;color:#888780;margin-top:4px;">${names}${entry.includeUntagged ? ' + sans projet' : ''}</div>
+      <div style="font-size:12px;color:#888780;margin-top:2px;word-break:break-all;">${url}</div>
+      <div style="margin-top:6px;display:flex;gap:10px;">
+        <button type="button" class="copy" style="border:none;background:none;color:#185FA5;cursor:pointer;font-size:12px;">Copier</button>
+        <button type="button" class="del" style="border:none;background:none;color:#A32D2D;cursor:pointer;font-size:12px;">Supprimer</button>
+      </div>
+    `;
+    row.querySelector('.copy').addEventListener('click', ()=>{
+      navigator.clipboard?.writeText(url);
+      alert('Lien copie :\n'+url);
+    });
+    row.querySelector('.del').addEventListener('click', async ()=>{
+      if(!confirm('Supprimer ce lien ? Il ne fonctionnera plus.')) return;
+      await api('/api/share-links/'+entry.id, {method:'DELETE'});
+      await renderSharePanel();
+    });
+    wrap.appendChild(row);
+  });
+}
+
+document.getElementById('new-share-add').addEventListener('click', async ()=>{
+  const label = document.getElementById('new-share-label').value.trim();
+  const includeUntagged = document.getElementById('new-share-untagged').checked;
+  const projectIds = [...document.querySelectorAll('#new-share-projects input:checked')].map(el=>el.value);
+  let result;
+  try{
+    result = await api('/api/share-links', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ label, projectIds, includeUntagged })
+    });
+  } catch(e){ return; }
+  document.getElementById('new-share-label').value = '';
+  document.getElementById('new-share-untagged').checked = false;
+  await renderSharePanel();
+  const url = window.location.origin + result.path;
+  navigator.clipboard?.writeText(url);
+  alert('Lien cree et copie :\n'+url);
+});
+
+async function openProposalsPanel(){
+  showSheet('proposals-panel');
+  await renderProposalsPanel();
+}
+
+async function renderProposalsPanel(){
+  const wrap = document.getElementById('proposals-list');
+  wrap.innerHTML = '<p style="font-size:13px;color:#888780;">Chargement...</p>';
+  let list = [];
+  try{ list = await api('/api/proposals'); } catch(e){}
+  pendingProposalsCount = list.filter(p=>p.status==='pending').length;
+  renderToolsChips();
+  if(!list.length){
+    wrap.innerHTML = '<p style="font-size:13px;color:#888780;">Aucune proposition envoyee.</p>';
+    return;
+  }
+  wrap.innerHTML = '';
+  const statusMetaMap = {
+    pending: {label:'En attente', color:'#B8860B'},
+    accepted: {label:'Acceptee', color:'#2E7D32'},
+    declined: {label:'Refusee', color:'#A32D2D'},
+  };
+  list.slice().sort((a,b)=> (b.createdAt||'').localeCompare(a.createdAt||'')).forEach(prop=>{
+    const meta = statusMetaMap[prop.status] || {label:prop.status, color:'#888780'};
+    const dateLabel = prop.allDay
+      ? `${prop.start}${prop.end && prop.end!==prop.start ? ' au '+prop.end : ''}`
+      : `${prop.start.slice(0,10)} ${timeOf(prop.start)}`;
+    const propUrl = `${window.location.origin}/proposition.html?id=${prop.id}`;
+    const row = document.createElement('div');
+    row.className = 'ev-row';
+    row.innerHTML = `
+      <div class="row-top">
+        <span style="font-weight:500;">${prop.title}</span>
+        <span style="font-size:11px;color:${meta.color};margin-left:8px;">&#9679; ${meta.label}</span>
+        <span class="time">${dateLabel}</span>
+      </div>
+      <div style="font-size:12px;color:#888780;margin:4px 0 0 0;">
+        ${prop.projectName ? 'Projet : '+prop.projectName+' - ' : ''}${prop.location ? 'Lieu : '+prop.location+' - ' : ''}${propUrl}
+      </div>
+      <div style="margin-top:6px;display:flex;gap:10px;">
+        <button type="button" class="copy" style="border:none;background:none;color:#185FA5;cursor:pointer;font-size:12px;">Copier le lien</button>
+        <button type="button" class="del" style="border:none;background:none;color:#A32D2D;cursor:pointer;font-size:12px;">Supprimer</button>
+      </div>
+    `;
+    row.querySelector('.copy').addEventListener('click', ()=>{
+      navigator.clipboard?.writeText(propUrl);
+      alert('Lien copie :\n'+propUrl);
+    });
+    row.querySelector('.del').addEventListener('click', async ()=>{
+      if(!confirm('Supprimer cette proposition ?')) return;
+      await api('/api/proposals/'+prop.id, {method:'DELETE'});
+      await renderProposalsPanel();
+    });
+    wrap.appendChild(row);
+  });
+}
+
+document.getElementById('propose-whatsapp-btn').addEventListener('click', async ()=>{
+  const title = document.getElementById('new-title').value.trim();
+  const projectId = document.getElementById('new-project').value;
+  const calendarUrl = document.getElementById('new-calendar').value;
+  const allDay = document.getElementById('new-allday').checked;
+  const location = document.getElementById('new-location').value.trim();
+  const phone = document.getElementById('new-whatsapp-phone').value.trim();
+  if(!title || !currentPanelDate){ alert('Ajoute au moins un titre.'); return; }
+  let start, end;
+  if(allDay){
+    start = currentPanelDate;
+    const endDateVal = document.getElementById('new-end-date').value;
+    end = (endDateVal && endDateVal >= currentPanelDate) ? endDateVal : currentPanelDate;
+  } else {
+    const st = document.getElementById('new-start-time').value || '09:00';
+    const et = document.getElementById('new-end-time').value || st;
+    start = new Date(`${currentPanelDate}T${st}:00`).toISOString();
+    end = new Date(`${currentPanelDate}T${et}:00`).toISOString();
+  }
+  let result;
+  try{
+    result = await api('/api/proposals', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ title, start, end, allDay, location, projectId, calendarUrl })
+    });
+  } catch(e){
+    alert('Erreur lors de la creation de la proposition.');
+    return;
+  }
+  const link = window.location.origin + result.path;
+  const dateHuman = allDay ? currentPanelDate : `${currentPanelDate} ${document.getElementById('new-start-time').value||''}`;
+  const message = `Bonjour ! Je te propose un rendez-vous : "${title}" le ${dateHuman}${location ? ' a '+location : ''}. Peux-tu confirmer ici : ${link}`;
+  const digits = phone.replace(/[^0-9]/g,'');
+  const waUrl = `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+  window.open(waUrl, '_blank');
+  document.getElementById('new-whatsapp-phone').value = '';
+  await refreshProposalsCount();
+  renderToolsChips();
+});
+
 async function runSearch(){
   const q = document.getElementById('search-input').value.trim();
   const resultsWrap = document.getElementById('search-results');
@@ -1082,6 +1314,7 @@ document.getElementById('next-btn').addEventListener('click', async ()=>{
     await loadCalendars();
     await loadEvents();
     await refreshSubmissionsCount();
+    await refreshProposalsCount();
   }
   await renderToolsChips();
   await renderCalendar();
