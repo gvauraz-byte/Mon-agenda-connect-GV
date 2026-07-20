@@ -16,10 +16,6 @@
     "label": "livraison décor"
   },
   {
-    "id": "qt-demontage-decor",
-    "label": "Demontage decor"
-  },
-  {
     "id": "qt-tournee",
     "label": "Tournee"
   }
