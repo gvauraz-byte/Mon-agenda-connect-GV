@@ -183,6 +183,7 @@
   <button class="close" data-close="panel">&times;</button>
   <h3 id="panel-date"></h3>
   <div id="panel-events"></div>
+  <div id="quick-titles" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px;"></div>
   <form id="add-form">
     <input type="text" id="new-title" placeholder="Nouvel evenement" required>
     <label class="allday"><input type="checkbox" id="new-allday" checked> Journee entiere</label>
@@ -445,6 +446,66 @@ function projectByName(name){
   return projects.find(p => p.name.toLowerCase() === String(name).toLowerCase()) || null;
 }
 
+function hasTimeConflict(events){
+  const timed = events.filter(ev=>!ev.allDay && ev.start && ev.end).slice().sort((a,b)=>a.start.localeCompare(b.start));
+  for(let i=0;i<timed.length;i++){
+    for(let j=i+1;j<timed.length;j++){
+      if(timed[j].start < timed[i].end && timed[i].start < timed[j].end) return true;
+    }
+  }
+  return false;
+}
+
+function computeDayWarnings(events){
+  const timed = events.filter(ev=>!ev.allDay && ev.start && ev.end).slice().sort((a,b)=>a.start.localeCompare(b.start));
+  const conflicts = [];
+  const tightGaps = [];
+  for(let i=0;i<timed.length;i++){
+    for(let j=i+1;j<timed.length;j++){
+      if(timed[j].start < timed[i].end && timed[i].start < timed[j].end){
+        conflicts.push([timed[i], timed[j]]);
+      }
+    }
+  }
+  for(let i=0;i<timed.length-1;i++){
+    const a = timed[i], b = timed[i+1];
+    if(b.start >= a.end){
+      const gapMin = (new Date(b.start) - new Date(a.end)) / 60000;
+      if(gapMin >= 0 && gapMin < 30){
+        tightGaps.push([a, b, Math.round(gapMin)]);
+      }
+    }
+  }
+  return { conflicts, tightGaps };
+}
+
+function weekChargeHours(mondayStr){
+  let hours = 0;
+  for(let i=0;i<7;i++){
+    const dayStr = addDaysStr(mondayStr, i);
+    const evts = (eventsByDay[dayStr] || []).filter(ev=>{
+      const proj = projectByName((ev.categories||[])[0]);
+      return proj ? activeProjects.has(proj.id) : showUntagged;
+    });
+    evts.forEach(ev=>{
+      if(ev.allDay){
+        hours += 3;
+      } else if(ev.start && ev.end){
+        const diff = (new Date(ev.end) - new Date(ev.start)) / 3600000;
+        if(diff > 0 && diff < 16) hours += diff;
+      }
+    });
+  }
+  return hours;
+}
+function chargeLevel(hours){
+  if(hours >= 30) return {label:'intense', color:'#A32D2D'};
+  if(hours >= 18) return {label:'chargee', color:'#D9822B'};
+  if(hours >= 8) return {label:'moderee', color:'#D9B233'};
+  if(hours > 0) return {label:'legere', color:'#6FA86F'};
+  return null;
+}
+
 const STATUS_META = {
   'a-confirmer': { label: 'A confirmer', color: '#B8860B' },
   'option': { label: 'Option', color: '#185FA5' },
@@ -579,6 +640,17 @@ async function renderCalendar(){
       const hasConfirm = visibleDayEvents.some(ev=> ev.status === 'a-confirmer');
       const hasOption = visibleDayEvents.some(ev=> ev.status === 'option');
       const hasImportant = visibleDayEvents.some(ev=> ev.status === 'important');
+      const hasConflict = hasTimeConflict(visibleDayEvents);
+
+      let chargeBadge = '';
+      if(isMonday){
+        const hours = weekChargeHours(dateStr);
+        const level = chargeLevel(hours);
+        if(level){
+          chargeBadge = ` <span title="Semaine ${level.label} (~${Math.round(hours)}h prevues)" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${level.color};margin-left:2px;"></span>`;
+        }
+      }
+      const conflictBadge = hasConflict ? ` <span title="Chevauchement d'horaire entre deux evenements" style="color:#D9502A;">&#9888;</span>` : '';
 
       let linesHtml = '';
       const shown = visibleDayEvents.slice(0, MAX_LINES);
@@ -598,7 +670,7 @@ async function renderCalendar(){
       const importantStyle = hasImportant ? 'outline:2px solid #A32D2D;outline-offset:-2px;' : '';
 
       td.style.cssText = `background:${bg};${border}${importantStyle}`;
-      td.innerHTML = `<div style="color:${numColor};font-weight:${holLabel?600:400};">${d} ${wd}</div>${holLabel}${linesHtml}${marksHtml}`;
+      td.innerHTML = `<div style="color:${numColor};font-weight:${holLabel?600:400};">${d} ${wd}${conflictBadge}${chargeBadge}</div>${holLabel}${linesHtml}${marksHtml}`;
       td.addEventListener('click', ()=> openPanel(dateStr));
       row.appendChild(td);
     }
@@ -606,9 +678,28 @@ async function renderCalendar(){
   }
 }
 
+const QUICK_TITLES = ['Repetition', 'Generale', 'Representation', 'Montage decor', 'Demontage decor', 'Tournee'];
+function renderQuickTitles(){
+  const wrap = document.getElementById('quick-titles');
+  wrap.innerHTML = '';
+  QUICK_TITLES.forEach(t=>{
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'chip';
+    btn.style.fontSize = '11px';
+    btn.textContent = t;
+    btn.addEventListener('click', ()=>{
+      document.getElementById('new-title').value = t;
+      document.getElementById('new-title').focus();
+    });
+    wrap.appendChild(btn);
+  });
+}
+
 function openPanel(dateStr){
   currentPanelDate = dateStr;
   showSheet('panel');
+  renderQuickTitles();
   const d = new Date(dateStr+'T12:00:00');
   document.getElementById('panel-date').textContent = d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
   document.getElementById('new-allday').checked = true;
@@ -638,11 +729,21 @@ document.querySelectorAll('[data-close]').forEach(btn=>{
 function renderPanelEvents(){
   const wrap = document.getElementById('panel-events');
   const evts = (eventsByDay[currentPanelDate] || []).slice().sort((a,b)=> (a.start||'').localeCompare(b.start||''));
+
+  let warnHtml = '';
+  const { conflicts, tightGaps } = computeDayWarnings(evts);
+  conflicts.forEach(([a,b])=>{
+    warnHtml += `<div style="background:#FBEAE5;color:#A32D2D;font-size:12px;padding:8px 10px;border-radius:8px;margin-bottom:6px;">&#9888; Chevauchement : "${a.title}" (${timeOf(a.start)}-${timeOf(a.end)}) et "${b.title}" (${timeOf(b.start)}-${timeOf(b.end)})</div>`;
+  });
+  tightGaps.forEach(([a,b,gap])=>{
+    warnHtml += `<div style="background:#FBF3E0;color:#8A6A1E;font-size:12px;padding:8px 10px;border-radius:8px;margin-bottom:6px;">&#9200; Seulement ${gap} min entre "${a.title}" et "${b.title}"</div>`;
+  });
+
   if(!evts.length){
-    wrap.innerHTML = '<p style="color:#888780;font-size:13px;">Aucun evenement ce jour.</p>';
+    wrap.innerHTML = warnHtml + '<p style="color:#888780;font-size:13px;">Aucun evenement ce jour.</p>';
     return;
   }
-  wrap.innerHTML = '';
+  wrap.innerHTML = warnHtml;
   evts.forEach(ev=>{
     const proj = projectByName((ev.categories||[])[0]);
     const row = document.createElement('div');

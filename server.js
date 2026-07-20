@@ -10,6 +10,8 @@ import { renderAnnualPdf, getMonths, isoDate, daysBetween } from './lib/pdf.js';
 import { isDurable } from './lib/datastore.js';
 import { loadShareLinks, addShareLink, findShareLink, removeShareLink } from './lib/shareLinks.js';
 import { loadProposals, addProposal, findProposal, updateProposal, removeProposal } from './lib/proposals.js';
+import { buildWeeklyDigest } from './lib/digest.js';
+import { sendEmail } from './lib/email.js';
 
 dotenv.config();
 
@@ -418,6 +420,43 @@ app.delete('/api/proposals/:id', async (req, res) => {
   try {
     const list = await removeProposal(req.params.id);
     res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Appele chaque semaine par une tache planifiee (voir .github/workflows/weekly-digest.yml) pour
+// envoyer le resume de la semaine en cours par email. Protege par un secret partage.
+app.post('/api/weekly-digest/send', async (req, res) => {
+  try {
+    const secret = req.headers['x-digest-secret'] || req.query.secret;
+    if (!process.env.DIGEST_SECRET || secret !== process.env.DIGEST_SECRET) {
+      return res.status(401).json({ error: 'Non autorise.' });
+    }
+    if (!process.env.DIGEST_TO) {
+      return res.status(400).json({ error: "DIGEST_TO n'est pas configure." });
+    }
+    const digest = await buildWeeklyDigest(new Date());
+    await sendEmail({
+      to: process.env.DIGEST_TO,
+      toName: process.env.DIGEST_TO_NAME || '',
+      subject: digest.subject,
+      html: digest.html,
+      text: digest.text,
+    });
+    res.json({ ok: true, weekStart: digest.weekStart, weekEnd: digest.weekEnd });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Previsualiser le resume de la semaine dans le navigateur, sans envoyer d'email (pratique pour tester).
+app.get('/api/weekly-digest/preview', async (req, res) => {
+  try {
+    const digest = await buildWeeklyDigest(new Date());
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(digest.html);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
