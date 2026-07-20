@@ -1,0 +1,26 @@
+[
+  {
+    "id": "qt-repetition",
+    "label": "résidence"
+  },
+  {
+    "id": "qt-generale",
+    "label": "Generale"
+  },
+  {
+    "id": "qt-representation",
+    "label": "Representation"
+  },
+  {
+    "id": "qt-montage-decor",
+    "label": "Montage decor"
+  },
+  {
+    "id": "qt-demontage-decor",
+    "label": "Demontage decor"
+  },
+  {
+    "id": "qt-tournee",
+    "label": "Tournee"
+  }
+]
