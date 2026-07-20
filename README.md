@@ -96,7 +96,8 @@ Comme le depot n'est pas connecte a Git en ligne de commande, la facon la plus s
 
 ## Corrige dans cette version
 
-- Bug corrige : un evenement "journee entiere" s'etalant sur un changement de mois (ex. 17 au 30 septembre) pouvait se dupliquer en boucle sur la vue annuelle. La date de fin est maintenant calculee correctement (y compris les changements de mois et d'annee).
+- Bug corrige (cote serveur) : la date de fin d'un evenement "journee entiere" traversant un changement de mois n'etait pas toujours calculee correctement lors de l'enregistrement dans iCloud.
+- Bug corrige (cote navigateur, le plus important) : le calcul "jour suivant" utilisait le fuseau horaire local au lieu d'UTC, ce qui faisait boucler indefiniment l'affichage d'un evenement multi-jours sur son premier jour pour les utilisateurs en France (UTC+1/+2) au lieu de l'etaler sur les jours suivants. C'est corrige, les evenements multi-jours s'affichent maintenant normalement.
 - Les projets et soumissions peuvent desormais etre stockes de facon durable dans ton depot GitHub (voir section ci-dessus) ; sans cette config, ils restent stockes localement sur Render et peuvent etre reinitialises a chaque mise a jour du code.
 
 ## Limites actuelles

@@ -22,8 +22,8 @@ function timeOf(isoStr){
   return new Date(isoStr).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
 }
 function addDaysStr(dateStr, n){
-  const d = new Date(dateStr+'T00:00:00');
-  d.setDate(d.getDate()+n);
+  const d = new Date(dateStr+'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate()+n);
   return d.toISOString().slice(0,10);
 }
 function inclusiveEndDay(ev){
