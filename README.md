@@ -65,6 +65,7 @@ A savoir : le rattachement d'un evenement a un projet (le "tag" que tu vois sur 
 ## Utilisation
 
 - Les points colores en haut sont tes projets : touche-en un pour l'afficher ou le masquer sur la vue annuelle.
+- Le point gris "Sans projet" fonctionne pareil : il permet de masquer d'un coup tous les evenements sans projet associe (par exemple ceux crees directement depuis l'app Calendrier de ton iPhone). Ce filtre s'applique aussi a l'export PDF.
 - "Gerer les projets" ouvre un panneau pour renommer un projet, changer sa couleur (touche le rond colore) ou le supprimer, et pour en ajouter un nouveau.
 - "Jours feries" et "Vacances scolaires" sont des filtres optionnels ; pour les vacances, choisis ta zone (A, B ou C).
 - Touche un jour dans le tableau pour voir ses evenements. Chaque evenement s'affiche sur sa propre ligne dans la case du jour (avec l'heure s'il en a une) ; s'il y en a plus de 3, un "+N" indique le nombre restant, visible en entier dans le panneau du jour.
@@ -74,6 +75,7 @@ A savoir : le rattachement d'un evenement a un projet (le "tag" que tu vois sur 
 - Le formulaire d'ajout permet de choisir une heure de debut/fin (ou de laisser "journee entiere"), un projet, et dans quel calendrier iCloud (Personnel, Travail, etc.) l'evenement doit etre cree.
 - La barre de recherche en haut cherche un evenement par titre sur les 5 prochaines annees et te propose de sauter directement a sa date.
 - Un champ "Lieu" (optionnel) est disponible a la creation et a l'edition d'un evenement ; il apparait aussi dans l'app Calendrier de ton iPhone.
+- Quand un evenement a un projet, son nom est ajoute entre parentheses a la fin du titre cote iCloud (ex "Reunion (Client A)"), pour qu'il reste visible dans l'app Calendrier de l'iPhone qui n'affiche pas les couleurs de projet. Dans notre app, le titre reste affiche sans ce suffixe puisque le projet est deja visible via le point colore. Ce suffixe n'apparait que sur les evenements crees ou modifies depuis cette mise a jour ; les evenements plus anciens l'auront a la prochaine modification.
 - Dans "Gerer les projets", chaque projet a un bouton "Voir la liste" : il ouvre un recapitulatif chronologique (date, heure, lieu) de tous les evenements de ce projet uniquement, sur la periode actuellement affichee.
 - Un evenement cree ou modifie ici apparait automatiquement dans l'app Calendrier de ton iPhone, et inversement.
 

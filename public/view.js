@@ -6,6 +6,7 @@ const MAX_LINES = 3;
 
 let projects = [];
 let activeProjects = new Set();
+let showUntagged = true;
 let showHolidays = false;
 let showVacations = false;
 let vacationZone = 'B';
@@ -82,6 +83,16 @@ function renderProjectChips(){
     });
     wrap.appendChild(chip);
   });
+  const untaggedChip = document.createElement('button');
+  untaggedChip.type = 'button';
+  untaggedChip.className = 'chip' + (showUntagged ? '' : ' off');
+  untaggedChip.innerHTML = `<span class="dot" style="background:#B4B2A9"></span>Sans projet`;
+  untaggedChip.addEventListener('click', ()=>{
+    showUntagged = !showUntagged;
+    renderProjectChips();
+    renderCalendar();
+  });
+  wrap.appendChild(untaggedChip);
 }
 
 function renderExtraChips(){
@@ -237,7 +248,7 @@ async function renderCalendar(){
       const shown = dayEvents.slice(0, MAX_LINES);
       shown.forEach(ev=>{
         const proj = projectByName((ev.categories||[])[0]);
-        const active = !proj || activeProjects.has(proj.id);
+        const active = proj ? activeProjects.has(proj.id) : showUntagged;
         if(!active) return;
         const color = proj ? proj.color : '#5F5E5A';
         const t = ev.allDay ? '' : timeOf(ev.start) + ' ';
@@ -289,7 +300,7 @@ function renderListPanel(){
   const visible = allEventsList
     .filter(ev=>{
       const proj = projectByName((ev.categories||[])[0]);
-      return !proj || activeProjects.has(proj.id);
+      return proj ? activeProjects.has(proj.id) : showUntagged;
     })
     .slice()
     .sort((a,b)=> (a.start||'').localeCompare(b.start||''));

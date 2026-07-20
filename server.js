@@ -272,6 +272,7 @@ app.get('/api/export/pdf', async (req, res) => {
     const year = parseInt(req.query.year, 10);
     if (!year) return res.status(400).json({ error: 'year requis' });
     const activeProjectIds = (req.query.projects || '').split(',').filter(Boolean);
+    const showUntagged = req.query.untagged !== '0';
     const showHolidays = req.query.holidays === '1';
     const showVacations = req.query.vacations === '1';
     const zone = req.query.zone || 'B';
@@ -317,6 +318,7 @@ app.get('/api/export/pdf', async (req, res) => {
       eventsByDay,
       projects,
       activeProjectIds,
+      showUntagged,
       holidaysMap,
       vacationsMap,
       filename: `agenda-${first.y}-${last.y}.pdf`,
