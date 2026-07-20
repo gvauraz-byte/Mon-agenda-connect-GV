@@ -18,5 +18,10 @@
     "id": "admin",
     "name": "Admin",
     "color": "#BA7517"
+  },
+  {
+    "id": "sport",
+    "name": "Sport",
+    "color": "#7f77dd"
   }
 ]
