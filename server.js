@@ -12,6 +12,7 @@ import { loadShareLinks, addShareLink, findShareLink, removeShareLink } from './
 import { loadProposals, addProposal, findProposal, updateProposal, removeProposal } from './lib/proposals.js';
 import { buildWeeklyDigest } from './lib/digest.js';
 import { sendEmail } from './lib/email.js';
+import { loadQuickTitles, saveQuickTitles, makeQuickTitleId } from './lib/quickTitles.js';
 
 dotenv.config();
 
@@ -520,6 +521,54 @@ app.get('/api/export/pdf', async (req, res) => {
     });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/quick-titles', async (req, res) => {
+  try {
+    res.json(await loadQuickTitles());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/quick-titles', async (req, res) => {
+  try {
+    const { label } = req.body;
+    if (!label || !label.trim()) return res.status(400).json({ error: 'label requis' });
+    const list = await loadQuickTitles();
+    const entry = { id: makeQuickTitleId(label), label: label.trim() };
+    list.push(entry);
+    await saveQuickTitles(list);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/quick-titles/:id', async (req, res) => {
+  try {
+    const { label } = req.body;
+    if (!label || !label.trim()) return res.status(400).json({ error: 'label requis' });
+    const list = await loadQuickTitles();
+    const item = list.find((t) => t.id === req.params.id);
+    if (!item) return res.status(404).json({ error: 'titre introuvable' });
+    item.label = label.trim();
+    await saveQuickTitles(list);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/quick-titles/:id', async (req, res) => {
+  try {
+    let list = await loadQuickTitles();
+    list = list.filter((t) => t.id !== req.params.id);
+    await saveQuickTitles(list);
+    res.json(list);
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

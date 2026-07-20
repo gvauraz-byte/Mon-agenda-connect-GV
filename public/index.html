@@ -183,7 +183,10 @@
   <button class="close" data-close="panel">&times;</button>
   <h3 id="panel-date"></h3>
   <div id="panel-events"></div>
-  <div id="quick-titles" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px;"></div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 10px;">
+    <div id="quick-titles" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+    <button type="button" class="chip ghost" id="manage-quick-titles-btn" style="font-size:11px;">Gerer les titres rapides</button>
+  </div>
   <form id="add-form">
     <input type="text" id="new-title" placeholder="Nouvel evenement" required>
     <label class="allday"><input type="checkbox" id="new-allday" checked> Journee entiere</label>
@@ -221,6 +224,17 @@
     <button id="new-project-add">Ajouter</button>
   </div>
   <p style="font-size:12px;color:#888780;margin-top:12px;">Touche "Lien formulaire" sur un projet pour copier un lien a envoyer a un partenaire, deja fixe sur ce projet.</p>
+</div>
+
+<div class="sheet" id="quick-titles-panel">
+  <button class="close" data-close="quick-titles-panel">&times;</button>
+  <h3>Gerer les titres rapides</h3>
+  <p style="font-size:12px;color:#888780;margin:0 0 12px;">Ces boutons apparaissent dans le panneau d'ajout d'un evenement, pour remplir le titre en un clic.</p>
+  <div id="quick-titles-list"></div>
+  <div id="new-quick-title-row" style="display:flex;gap:8px;align-items:center;margin-top:10px;">
+    <input type="text" id="new-quick-title-label" placeholder="Nouveau titre rapide" style="flex:1;padding:8px;border-radius:8px;border:1px solid #D3D1C7;">
+    <button id="new-quick-title-add" style="padding:8px 12px;border-radius:8px;border:none;background:#2C2C2A;color:#fff;cursor:pointer;">Ajouter</button>
+  </div>
 </div>
 
 <div class="sheet" id="list-panel">
@@ -678,28 +692,80 @@ async function renderCalendar(){
   }
 }
 
-const QUICK_TITLES = ['Repetition', 'Generale', 'Representation', 'Montage decor', 'Demontage decor', 'Tournee'];
-function renderQuickTitles(){
+let quickTitles = [];
+async function loadQuickTitlesData(){
+  try{ quickTitles = await api('/api/quick-titles'); } catch(e){ quickTitles = []; }
+  renderQuickTitleChips();
+}
+
+function renderQuickTitleChips(){
   const wrap = document.getElementById('quick-titles');
   wrap.innerHTML = '';
-  QUICK_TITLES.forEach(t=>{
+  quickTitles.forEach(t=>{
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'chip';
     btn.style.fontSize = '11px';
-    btn.textContent = t;
+    btn.textContent = t.label;
     btn.addEventListener('click', ()=>{
-      document.getElementById('new-title').value = t;
+      document.getElementById('new-title').value = t.label;
       document.getElementById('new-title').focus();
     });
     wrap.appendChild(btn);
   });
 }
 
+function openQuickTitlesPanel(){
+  showSheet('quick-titles-panel');
+  renderQuickTitlesPanel();
+}
+
+function renderQuickTitlesPanel(){
+  const wrap = document.getElementById('quick-titles-list');
+  wrap.innerHTML = '';
+  if(!quickTitles.length){
+    wrap.innerHTML = '<p style="font-size:13px;color:#888780;">Aucun titre rapide pour le moment.</p>';
+  }
+  quickTitles.forEach(t=>{
+    const row = document.createElement('div');
+    row.className = 'proj-row';
+    row.innerHTML = `
+      <input type="text" value="${t.label.replace(/"/g,'&quot;')}">
+      <button type="button">Supprimer</button>
+    `;
+    const input = row.querySelector('input[type=text]');
+    input.addEventListener('blur', async ()=>{
+      const label = input.value.trim();
+      if(!label || label === t.label) return;
+      await api('/api/quick-titles/'+t.id, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({label})});
+      await loadQuickTitlesData();
+      renderQuickTitlesPanel();
+    });
+    row.querySelector('button').addEventListener('click', async ()=>{
+      if(!confirm(`Supprimer le titre rapide "${t.label}" ?`)) return;
+      await api('/api/quick-titles/'+t.id, {method:'DELETE'});
+      await loadQuickTitlesData();
+      renderQuickTitlesPanel();
+    });
+    wrap.appendChild(row);
+  });
+}
+
+document.getElementById('manage-quick-titles-btn').addEventListener('click', openQuickTitlesPanel);
+document.getElementById('new-quick-title-add').addEventListener('click', async ()=>{
+  const input = document.getElementById('new-quick-title-label');
+  const label = input.value.trim();
+  if(!label) return;
+  await api('/api/quick-titles', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({label})});
+  input.value = '';
+  await loadQuickTitlesData();
+  renderQuickTitlesPanel();
+});
+
 function openPanel(dateStr){
   currentPanelDate = dateStr;
   showSheet('panel');
-  renderQuickTitles();
+  renderQuickTitleChips();
   const d = new Date(dateStr+'T12:00:00');
   document.getElementById('panel-date').textContent = d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
   document.getElementById('new-allday').checked = true;
@@ -1410,6 +1476,7 @@ document.getElementById('next-btn').addEventListener('click', async ()=>{
 (async function init(){
   const ok = await checkHealth();
   await loadProjects();
+  await loadQuickTitlesData();
   renderExtraChips();
   if(ok){
     await loadCalendars();
