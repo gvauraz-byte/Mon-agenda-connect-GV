@@ -1,0 +1,22 @@
+[
+  {
+    "id": "client-a",
+    "name": "Client A",
+    "color": "#378ADD"
+  },
+  {
+    "id": "client-b",
+    "name": "misanthrope",
+    "color": "#d85a30"
+  },
+  {
+    "id": "perso",
+    "name": "Perso",
+    "color": "#1D9E75"
+  },
+  {
+    "id": "admin",
+    "name": "Admin",
+    "color": "#BA7517"
+  }
+]
