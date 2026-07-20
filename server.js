@@ -110,7 +110,7 @@ app.get('/api/events', async (req, res) => {
 
 app.post('/api/events', async (req, res) => {
   try {
-    const { title, start, end, allDay, projectId, calendarUrl, location } = req.body;
+    const { title, start, end, allDay, projectId, calendarUrl, location, status } = req.body;
     if (!title || !start) return res.status(400).json({ error: 'title et start requis' });
     const projects = await loadProjects();
     const project = projects.find((p) => p.id === projectId);
@@ -122,6 +122,7 @@ app.post('/api/events', async (req, res) => {
       category: project ? project.name : undefined,
       calendarUrl,
       location,
+      status,
     });
     res.json(result);
   } catch (err) {
@@ -132,7 +133,7 @@ app.post('/api/events', async (req, res) => {
 
 app.put('/api/events', async (req, res) => {
   try {
-    const { url, etag, uid, title, start, end, allDay, projectId, location } = req.body;
+    const { url, etag, uid, title, start, end, allDay, projectId, location, status } = req.body;
     if (!url || !uid || !title || !start) {
       return res.status(400).json({ error: 'url, uid, title et start requis' });
     }
@@ -148,6 +149,7 @@ app.put('/api/events', async (req, res) => {
       allDay,
       category: project ? project.name : undefined,
       location,
+      status,
     });
     res.json(result);
   } catch (err) {

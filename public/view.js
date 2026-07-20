@@ -56,6 +56,17 @@ function getMonths(year){
   return list;
 }
 
+const STATUS_META = {
+  'a-confirmer': { label: 'A confirmer', color: '#B8860B' },
+  'option': { label: 'Option', color: '#185FA5' },
+  'important': { label: 'Important', color: '#A32D2D' },
+};
+function statusLabel(status){
+  const meta = STATUS_META[status];
+  if(!meta) return '';
+  return `<span style="font-size:11px;color:${meta.color};margin-left:6px;">&#9679; ${meta.label}</span>`;
+}
+
 async function api(path){
   const res = await fetch(path);
   if(!res.ok) throw new Error('Erreur serveur');
@@ -244,22 +255,33 @@ async function renderCalendar(){
         }
       }
 
+      const visibleDayEvents = dayEvents.filter(ev=>{
+        const proj = projectByName((ev.categories||[])[0]);
+        return proj ? activeProjects.has(proj.id) : showUntagged;
+      });
+      const hasConfirm = visibleDayEvents.some(ev=> ev.status === 'a-confirmer');
+      const hasOption = visibleDayEvents.some(ev=> ev.status === 'option');
+      const hasImportant = visibleDayEvents.some(ev=> ev.status === 'important');
+
       let linesHtml = '';
-      const shown = dayEvents.slice(0, MAX_LINES);
+      const shown = visibleDayEvents.slice(0, MAX_LINES);
       shown.forEach(ev=>{
         const proj = projectByName((ev.categories||[])[0]);
-        const active = proj ? activeProjects.has(proj.id) : showUntagged;
-        if(!active) return;
         const color = proj ? proj.color : '#5F5E5A';
         const t = ev.allDay ? '' : timeOf(ev.start) + ' ';
-        linesHtml += `<div class="ev-line" style="color:${color}"><span class="dot" style="background:${color}"></span>${t}${ev.title}</div>`;
+        linesHtml += `<div class="ev-line" style="color:${color}"><span class="dot" style="background:${color}"></span><span class="ev-text">${t}${ev.title}</span></div>`;
       });
-      if(dayEvents.length > MAX_LINES){
-        linesHtml += `<div class="ev-more">+${dayEvents.length - MAX_LINES}</div>`;
+      if(visibleDayEvents.length > MAX_LINES){
+        linesHtml += `<div class="ev-more">+${visibleDayEvents.length - MAX_LINES}</div>`;
       }
 
-      td.style.cssText = `background:${bg};${border}`;
-      td.innerHTML = `<div style="color:${numColor};font-weight:${holLabel?600:400};">${d} ${wd}</div>${holLabel}${linesHtml}`;
+      let marksHtml = '';
+      if(hasConfirm) marksHtml += `<div style="position:absolute;top:0;right:0;bottom:0;width:3px;background:#E8B93A;"></div>`;
+      if(hasOption) marksHtml += `<div style="position:absolute;top:0;right:${hasConfirm ? '3px' : '0'};bottom:0;width:3px;background:#185FA5;"></div>`;
+      const importantStyle = hasImportant ? 'outline:2px solid #A32D2D;outline-offset:-2px;' : '';
+
+      td.style.cssText = `background:${bg};${border}${importantStyle}`;
+      td.innerHTML = `<div style="color:${numColor};font-weight:${holLabel?600:400};">${d} ${wd}</div>${holLabel}${linesHtml}${marksHtml}`;
       td.addEventListener('click', ()=> openPanel(dateStr));
       row.appendChild(td);
     }
@@ -287,6 +309,7 @@ function openPanel(dateStr){
       <div class="row-top">
         <span class="dot" style="background:${proj ? proj.color : '#B4B2A9'}"></span>
         <span>${ev.title}</span>
+        ${statusLabel(ev.status)}
         <span class="time">${timeLabel}</span>
       </div>
       ${ev.location ? `<div class="loc">${ev.location}</div>` : ''}
@@ -327,6 +350,7 @@ function renderListPanel(){
       <div class="row-top">
         <span class="dot" style="background:${proj ? proj.color : '#B4B2A9'}"></span>
         <span style="font-weight:500;">${ev.title}</span>
+        ${statusLabel(ev.status)}
       </div>
       <div style="font-size:12px;color:#888780;margin:2px 0 0 16px;">${dateLabel} - ${timeLabel}${ev.location ? ' - '+ev.location : ''}${proj ? ' - '+proj.name : ''}</div>
     `;

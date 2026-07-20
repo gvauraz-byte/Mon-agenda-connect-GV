@@ -81,12 +81,13 @@
   th { padding: 5px 2px; font-weight: 600; color: #5F5E5A; text-align: center; border-bottom: 1px solid #B4B2A9; }
   td {
     padding: 2px 3px; text-align: left; vertical-align: top;
-    overflow: hidden; cursor: pointer;
+    position: relative; cursor: pointer;
     border-bottom: 1px solid #EFEEEA;
   }
   td:hover { outline: 1px solid #B4B2A9; outline-offset: -1px; }
-  .ev-line { font-size: 9.5px; display: flex; align-items: center; gap: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ev-line .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .ev-line { font-size: 9.5px; display: flex; align-items: flex-start; gap: 3px; white-space: normal; }
+  .ev-line .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+  .ev-line .ev-text { flex: 1; min-width: 0; word-break: break-word; }
   .ev-more { font-size: 9.5px; color: #888780; }
   .hol-label { font-size: 9.5px; color: #A32D2D; overflow: hidden; text-overflow: ellipsis; }
 
@@ -189,6 +190,12 @@
     <input type="time" id="new-start-time" value="09:00" style="display:none;">
     <input type="time" id="new-end-time" value="10:00" style="display:none;">
     <input type="text" id="new-location" placeholder="Lieu (optionnel)">
+    <select id="new-status">
+      <option value="">Statut : normal</option>
+      <option value="a-confirmer">A confirmer</option>
+      <option value="option">Option</option>
+      <option value="important">Important</option>
+    </select>
     <select id="new-project"><option value="">Sans projet</option></select>
     <select id="new-calendar"></select>
     <button type="submit">Ajouter</button>
@@ -407,6 +414,17 @@ function projectByName(name){
   return projects.find(p => p.name.toLowerCase() === String(name).toLowerCase()) || null;
 }
 
+const STATUS_META = {
+  'a-confirmer': { label: 'A confirmer', color: '#B8860B' },
+  'option': { label: 'Option', color: '#185FA5' },
+  'important': { label: 'Important', color: '#A32D2D' },
+};
+function statusLabel(status){
+  const meta = STATUS_META[status];
+  if(!meta) return '';
+  return `<span style="font-size:11px;color:${meta.color};margin-left:6px;">&#9679; ${meta.label}</span>`;
+}
+
 function periodRange(year){
   const months = getMonths(year);
   const first = months[0];
@@ -523,22 +541,33 @@ async function renderCalendar(){
         }
       }
 
+      const visibleDayEvents = dayEvents.filter(ev=>{
+        const proj = projectByName((ev.categories||[])[0]);
+        return proj ? activeProjects.has(proj.id) : showUntagged;
+      });
+      const hasConfirm = visibleDayEvents.some(ev=> ev.status === 'a-confirmer');
+      const hasOption = visibleDayEvents.some(ev=> ev.status === 'option');
+      const hasImportant = visibleDayEvents.some(ev=> ev.status === 'important');
+
       let linesHtml = '';
-      const shown = dayEvents.slice(0, MAX_LINES);
+      const shown = visibleDayEvents.slice(0, MAX_LINES);
       shown.forEach(ev=>{
         const proj = projectByName((ev.categories||[])[0]);
-        const active = proj ? activeProjects.has(proj.id) : showUntagged;
-        if(!active) return;
         const color = proj ? proj.color : '#5F5E5A';
         const t = ev.allDay ? '' : timeOf(ev.start) + ' ';
-        linesHtml += `<div class="ev-line" style="color:${color}"><span class="dot" style="background:${color}"></span>${t}${ev.title}</div>`;
+        linesHtml += `<div class="ev-line" style="color:${color}"><span class="dot" style="background:${color}"></span><span class="ev-text">${t}${ev.title}</span></div>`;
       });
-      if(dayEvents.length > MAX_LINES){
-        linesHtml += `<div class="ev-more">+${dayEvents.length - MAX_LINES}</div>`;
+      if(visibleDayEvents.length > MAX_LINES){
+        linesHtml += `<div class="ev-more">+${visibleDayEvents.length - MAX_LINES}</div>`;
       }
 
-      td.style.cssText = `background:${bg};${border}`;
-      td.innerHTML = `<div style="color:${numColor};font-weight:${holLabel?600:400};">${d} ${wd}</div>${holLabel}${linesHtml}`;
+      let marksHtml = '';
+      if(hasConfirm) marksHtml += `<div style="position:absolute;top:0;right:0;bottom:0;width:3px;background:#E8B93A;"></div>`;
+      if(hasOption) marksHtml += `<div style="position:absolute;top:0;right:${hasConfirm ? '3px' : '0'};bottom:0;width:3px;background:#185FA5;"></div>`;
+      const importantStyle = hasImportant ? 'outline:2px solid #A32D2D;outline-offset:-2px;' : '';
+
+      td.style.cssText = `background:${bg};${border}${importantStyle}`;
+      td.innerHTML = `<div style="color:${numColor};font-weight:${holLabel?600:400};">${d} ${wd}</div>${holLabel}${linesHtml}${marksHtml}`;
       td.addEventListener('click', ()=> openPanel(dateStr));
       row.appendChild(td);
     }
@@ -589,10 +618,12 @@ function renderPanelEvents(){
     row.className = 'ev-row';
     const timeLabel = ev.allDay ? 'Journee entiere' : (timeOf(ev.start) + (ev.end ? ' - ' + timeOf(ev.end) : ''));
     const locLine = ev.location ? `<div style="font-size:12px;color:#888780;margin-left:16px;">${ev.location}</div>` : '';
+    const statusLine = statusLabel(ev.status);
     row.innerHTML = `
       <div class="row-top">
         <span class="dot" style="background:${proj ? proj.color : '#B4B2A9'}"></span>
         <span>${ev.title}</span>
+        ${statusLine}
         <span class="time">${timeLabel}</span>
         <span class="actions">
           <button class="edit">Modifier</button>
@@ -627,7 +658,7 @@ function renderPanelEvents(){
       await api('/api/events', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ title: ev.title, start, end, allDay: ev.allDay, projectId: proj ? proj.id : '', calendarUrl: ev.calendarUrl })
+        body: JSON.stringify({ title: ev.title, start, end, allDay: ev.allDay, projectId: proj ? proj.id : '', calendarUrl: ev.calendarUrl, location: ev.location || '', status: ev.status || '' })
       });
       await loadEvents();
       renderPanelEvents();
@@ -654,12 +685,19 @@ function openEditForm(row, ev, proj){
     <input type="time" class="e-start" value="${startTime}" style="${ev.allDay?'display:none;':''}">
     <input type="time" class="e-end" value="${endTime}" style="${ev.allDay?'display:none;':''}">
     <input type="text" class="e-location" placeholder="Lieu (optionnel)" value="${(ev.location||'').replace(/"/g,'&quot;')}">
+    <select class="e-status">
+      <option value="">Statut : normal</option>
+      <option value="a-confirmer">A confirmer</option>
+      <option value="option">Option</option>
+      <option value="important">Important</option>
+    </select>
     <select class="e-project"></select>
     <div class="row-buttons">
       <button class="save">Enregistrer</button>
       <button class="cancel" type="button">Annuler</button>
     </div>
   `;
+  form.querySelector('.e-status').value = ev.status || '';
   const sel = form.querySelector('.e-project');
   sel.innerHTML = '<option value="">Sans projet</option>';
   projects.forEach(p=>{
@@ -681,6 +719,7 @@ function openEditForm(row, ev, proj){
     const allDay = form.querySelector('.e-allday').checked;
     const projectId = form.querySelector('.e-project').value;
     const location = form.querySelector('.e-location').value.trim();
+    const status = form.querySelector('.e-status').value;
     const newStartDay = form.querySelector('.e-start-date').value || startDay;
     let start, end;
     if(allDay){
@@ -696,7 +735,7 @@ function openEditForm(row, ev, proj){
     await api('/api/events', {
       method: 'PUT',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ url: ev.url, etag: ev.etag, uid: ev.uid, title, start, end, allDay, projectId, location })
+      body: JSON.stringify({ url: ev.url, etag: ev.etag, uid: ev.uid, title, start, end, allDay, projectId, location, status })
     });
     await loadEvents();
     renderPanelEvents();
@@ -719,6 +758,7 @@ document.getElementById('add-form').addEventListener('submit', async (e)=>{
   const calendarUrl = document.getElementById('new-calendar').value;
   const allDay = document.getElementById('new-allday').checked;
   const location = document.getElementById('new-location').value.trim();
+  const status = document.getElementById('new-status').value;
   if(!title || !currentPanelDate) return;
   let start, end;
   if(allDay){
@@ -734,10 +774,11 @@ document.getElementById('add-form').addEventListener('submit', async (e)=>{
   await api('/api/events', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ title, start, end, allDay, projectId, calendarUrl, location })
+    body: JSON.stringify({ title, start, end, allDay, projectId, calendarUrl, location, status })
   });
   document.getElementById('new-title').value = '';
   document.getElementById('new-location').value = '';
+  document.getElementById('new-status').value = '';
   await loadEvents();
   renderPanelEvents();
   renderCalendar();
@@ -893,6 +934,7 @@ function renderListPanel(projectId){
       <div class="row-top">
         <span class="dot" style="background:${proj ? proj.color : '#B4B2A9'}"></span>
         <span style="font-weight:500;">${ev.title}</span>
+        ${statusLabel(ev.status)}
       </div>
       <div style="font-size:12px;color:#888780;margin:2px 0 0 16px;">${dateLabel} - ${timeLabel}${ev.location ? ' - '+ev.location : ''}${proj ? ' - '+proj.name : ''}</div>
     `;
