@@ -55,6 +55,8 @@ Par defaut, tes projets personnalises et les soumissions en attente sont stockes
 
 Une fois configure, l'app ecrit directement tes projets et soumissions dans un dossier `data/` de ton depot GitHub a chaque changement — ils survivent a toutes les futures mises a jour. Si tu ne configures pas ces variables, l'app continue de fonctionner normalement, juste avec le risque de reinitialisation deja mentionne (un message te le rappelle dans le panneau "Gerer les projets" si c'est le cas).
 
+A savoir : le rattachement d'un evenement a un projet (le "tag" que tu vois sur chaque evenement colore) n'est jamais concerne par ce risque, meme sans configurer GitHub — cette information est ecrite directement dans l'evenement lui-meme sur iCloud (le champ "categories"), pas sur le serveur Render, donc elle est deja permanente. Seuls le nom et la couleur de tes projets, plus les soumissions partenaires en attente, beneficient de cette configuration GitHub.
+
 ## Etape 4 - Ouvrir sur iPhone
 
 1. Ouvre l'URL Render dans Safari sur ton iPhone.
@@ -72,7 +74,7 @@ Une fois configure, l'app ecrit directement tes projets et soumissions dans un d
 - Le formulaire d'ajout permet de choisir une heure de debut/fin (ou de laisser "journee entiere"), un projet, et dans quel calendrier iCloud (Personnel, Travail, etc.) l'evenement doit etre cree.
 - La barre de recherche en haut cherche un evenement par titre sur les 5 prochaines annees et te propose de sauter directement a sa date.
 - Un champ "Lieu" (optionnel) est disponible a la creation et a l'edition d'un evenement ; il apparait aussi dans l'app Calendrier de ton iPhone.
-- "Vue liste" affiche tous les evenements de la periode dans l'ordre chronologique, avec date, heure, lieu et projet — pratique pour un recapitulatif complet plutot que la grille.
+- Dans "Gerer les projets", chaque projet a un bouton "Voir la liste" : il ouvre un recapitulatif chronologique (date, heure, lieu) de tous les evenements de ce projet uniquement, sur la periode actuellement affichee.
 - Un evenement cree ou modifie ici apparait automatiquement dans l'app Calendrier de ton iPhone, et inversement.
 
 ## Nouveau : partage et formulaire partenaires

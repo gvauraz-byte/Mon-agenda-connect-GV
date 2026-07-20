@@ -134,7 +134,9 @@
   }
 
   #projects-list { margin-bottom: 12px; }
-  .proj-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #F1EFE8; }
+  .proj-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #F1EFE8; flex-wrap: wrap; }
+  .proj-row input[type=text] { min-width: 100px; }
+  .proj-row button { font-size: 12px; white-space: nowrap; }
   .proj-row input[type=color] { width: 28px; height: 28px; border: none; padding: 0; border-radius: 50%; overflow: hidden; }
   .proj-row input[type=text] { flex: 1; padding: 7px; border-radius: 8px; border: 1px solid #D3D1C7; }
   .proj-row button { border: none; background: none; color: #A32D2D; cursor: pointer; font-size: 12px; }
@@ -208,7 +210,7 @@
 
 <div class="sheet" id="list-panel">
   <button class="close" data-close="list-panel">&times;</button>
-  <h3>Liste chronologique</h3>
+  <h3 id="list-panel-title">Liste chronologique</h3>
   <div id="list-events"></div>
 </div>
 
@@ -741,6 +743,7 @@ function renderProjectsPanel(){
     row.innerHTML = `
       <input type="color" value="${p.color}">
       <input type="text" value="${p.name.replace(/"/g,'&quot;')}">
+      <button class="list" type="button" style="color:#185FA5;">Voir la liste</button>
       <button class="link" type="button" style="color:#185FA5;">Lien formulaire</button>
       <button type="button">Supprimer</button>
     `;
@@ -753,6 +756,9 @@ function renderProjectsPanel(){
     }
     colorInput.addEventListener('change', save);
     nameInput.addEventListener('blur', save);
+    row.querySelector('.list').addEventListener('click', ()=>{
+      openListPanel(p.id);
+    });
     row.querySelector('.link').addEventListener('click', ()=>{
       const url = `${window.location.origin}/formulaire.html?projet=${p.id}`;
       navigator.clipboard?.writeText(url);
@@ -782,13 +788,6 @@ let pendingSubmissionsCount = 0;
 async function renderToolsChips(){
   const wrap = document.getElementById('tools-chips');
   wrap.innerHTML = '';
-
-  const listChip = document.createElement('button');
-  listChip.type = 'button';
-  listChip.className = 'chip';
-  listChip.textContent = 'Vue liste';
-  listChip.addEventListener('click', openListPanel);
-  wrap.appendChild(listChip);
 
   const pdfChip = document.createElement('button');
   pdfChip.type = 'button';
@@ -837,16 +836,22 @@ async function refreshSubmissionsCount(){
   } catch(e){ pendingSubmissionsCount = 0; }
 }
 
-function openListPanel(){
+function openListPanel(projectId){
+  const months = getMonths(periodYear);
+  const periodLabel = `${MONTH_NAMES[months[0].m]} ${months[0].y} - ${MONTH_NAMES[months[11].m]} ${months[11].y}`;
+  document.getElementById('list-panel-title').textContent = projectId
+    ? `Liste - ${projects.find(p=>p.id===projectId)?.name || ''} (${periodLabel})`
+    : `Liste chronologique (${periodLabel})`;
   showSheet('list-panel');
-  renderListPanel();
+  renderListPanel(projectId);
 }
 
-function renderListPanel(){
+function renderListPanel(projectId){
   const wrap = document.getElementById('list-events');
   const visible = allEventsList
     .filter(ev=>{
       const proj = projectByName((ev.categories||[])[0]);
+      if(projectId) return proj && proj.id === projectId;
       return !proj || activeProjects.has(proj.id);
     })
     .slice()
