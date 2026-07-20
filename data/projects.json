@@ -18,5 +18,10 @@
     "id": "sport",
     "name": "ENSS",
     "color": "#7f77dd"
+  },
+  {
+    "id": "bla-bla",
+    "name": "Bla-bla",
+    "color": "#7f77dd"
   }
 ]
