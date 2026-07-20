@@ -196,6 +196,7 @@
 <div class="sheet" id="projects-panel">
   <button class="close" data-close="projects-panel">&times;</button>
   <h3>Gerer les projets</h3>
+  <p id="storage-notice" style="display:none;font-size:12px;color:#A32D2D;background:#FAECE7;padding:8px 10px;border-radius:8px;">Stockage non durable : ces projets peuvent revenir a leurs valeurs par defaut apres une mise a jour du code. Ajoute GITHUB_TOKEN et GITHUB_REPO pour les rendre permanents (voir README).</p>
   <div id="projects-list"></div>
   <div id="new-project-row">
     <input type="text" id="new-project-name" placeholder="Nom du nouveau projet">
@@ -203,6 +204,12 @@
     <button id="new-project-add">Ajouter</button>
   </div>
   <p style="font-size:12px;color:#888780;margin-top:12px;">Touche "Lien formulaire" sur un projet pour copier un lien a envoyer a un partenaire, deja fixe sur ce projet.</p>
+</div>
+
+<div class="sheet" id="list-panel">
+  <button class="close" data-close="list-panel">&times;</button>
+  <h3>Liste chronologique</h3>
+  <div id="list-events"></div>
 </div>
 
 <div class="sheet" id="submissions-panel">
@@ -227,6 +234,7 @@ let showVacations = false;
 let vacationZone = 'B';
 let periodYear = START_YEAR;
 let eventsByDay = {};
+let allEventsList = [];
 let holidaysCache = {};
 let vacationsCache = {};
 let currentPanelDate = null;
@@ -244,8 +252,8 @@ function addDaysStr(dateStr, n){
 }
 function inclusiveEndDay(ev){
   if(!ev.end) return ev.start.slice(0,10);
-  if(!ev.allDay) return ev.start.slice(0,10);
-  return addDaysStr(ev.end.slice(0,10), -1);
+  if(ev.allDay) return addDaysStr(ev.end.slice(0,10), -1);
+  return ev.end.slice(0,10);
 }
 function daysBetween(ev){
   const startDay = ev.start.slice(0,10);
@@ -281,10 +289,12 @@ async function api(path, opts){
   return res.json();
 }
 
+let durableStorage = false;
 async function checkHealth(){
   try{
     const h = await api('/api/health');
     document.getElementById('setup-notice').style.display = h.configured ? 'none' : 'block';
+    durableStorage = Boolean(h.durableStorage);
     return h.configured;
   } catch(e){
     document.getElementById('setup-notice').style.display = 'block';
@@ -395,8 +405,10 @@ function periodRange(year){
 async function loadEvents(){
   const { start, end } = periodRange(periodYear);
   eventsByDay = {};
+  allEventsList = [];
   try{
     const events = await api(`/api/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
+    allEventsList = events.filter(ev=>ev.start);
     events.forEach(ev=>{
       if(!ev.start) return;
       daysBetween(ev).forEach(day=>{
@@ -717,6 +729,7 @@ document.getElementById('add-form').addEventListener('submit', async (e)=>{
 });
 
 function openProjectsPanel(){
+  document.getElementById('storage-notice').style.display = durableStorage ? 'none' : 'block';
   showSheet('projects-panel');
 }
 function renderProjectsPanel(){
@@ -770,6 +783,13 @@ async function renderToolsChips(){
   const wrap = document.getElementById('tools-chips');
   wrap.innerHTML = '';
 
+  const listChip = document.createElement('button');
+  listChip.type = 'button';
+  listChip.className = 'chip';
+  listChip.textContent = 'Vue liste';
+  listChip.addEventListener('click', openListPanel);
+  wrap.appendChild(listChip);
+
   const pdfChip = document.createElement('button');
   pdfChip.type = 'button';
   pdfChip.className = 'chip';
@@ -815,6 +835,50 @@ async function refreshSubmissionsCount(){
     const list = await api('/api/submissions');
     pendingSubmissionsCount = list.length;
   } catch(e){ pendingSubmissionsCount = 0; }
+}
+
+function openListPanel(){
+  showSheet('list-panel');
+  renderListPanel();
+}
+
+function renderListPanel(){
+  const wrap = document.getElementById('list-events');
+  const visible = allEventsList
+    .filter(ev=>{
+      const proj = projectByName((ev.categories||[])[0]);
+      return !proj || activeProjects.has(proj.id);
+    })
+    .slice()
+    .sort((a,b)=> (a.start||'').localeCompare(b.start||''));
+
+  if(!visible.length){
+    wrap.innerHTML = '<p style="font-size:13px;color:#888780;">Aucun evenement sur cette periode.</p>';
+    return;
+  }
+  wrap.innerHTML = '';
+  visible.forEach(ev=>{
+    const proj = projectByName((ev.categories||[])[0]);
+    const startDay = ev.start.slice(0,10);
+    const endDay = inclusiveEndDay(ev);
+    const dObj = new Date(startDay+'T12:00:00');
+    let dateLabel = dObj.toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
+    if(endDay !== startDay){
+      const eObj = new Date(endDay+'T12:00:00');
+      dateLabel += ' au ' + eObj.toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
+    }
+    const timeLabel = ev.allDay ? 'Journee entiere' : (timeOf(ev.start) + (ev.end ? ' - ' + timeOf(ev.end) : ''));
+    const row = document.createElement('div');
+    row.className = 'ev-row';
+    row.innerHTML = `
+      <div class="row-top">
+        <span class="dot" style="background:${proj ? proj.color : '#B4B2A9'}"></span>
+        <span style="font-weight:500;">${ev.title}</span>
+      </div>
+      <div style="font-size:12px;color:#888780;margin:2px 0 0 16px;">${dateLabel} - ${timeLabel}${ev.location ? ' - '+ev.location : ''}${proj ? ' - '+proj.name : ''}</div>
+    `;
+    wrap.appendChild(row);
+  });
 }
 
 async function openSubmissionsPanel(){

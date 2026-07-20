@@ -11,6 +11,7 @@ let showVacations = false;
 let vacationZone = 'B';
 let periodYear = START_YEAR;
 let eventsByDay = {};
+let allEventsList = [];
 let holidaysCache = {};
 let vacationsCache = {};
 
@@ -27,8 +28,8 @@ function addDaysStr(dateStr, n){
 }
 function inclusiveEndDay(ev){
   if(!ev.end) return ev.start.slice(0,10);
-  if(!ev.allDay) return ev.start.slice(0,10);
-  return addDaysStr(ev.end.slice(0,10), -1);
+  if(ev.allDay) return addDaysStr(ev.end.slice(0,10), -1);
+  return ev.end.slice(0,10);
 }
 function daysBetween(ev){
   const startDay = ev.start.slice(0,10);
@@ -132,8 +133,10 @@ function periodRange(year){
 async function loadEvents(){
   const { start, end } = periodRange(periodYear);
   eventsByDay = {};
+  allEventsList = [];
   try{
     const events = await api(`/api/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
+    allEventsList = events.filter(ev=>ev.start);
     events.forEach(ev=>{
       if(!ev.start) return;
       daysBetween(ev).forEach(day=>{
@@ -280,6 +283,49 @@ function openPanel(dateStr){
     wrap.appendChild(row);
   });
 }
+
+function renderListPanel(){
+  const wrap = document.getElementById('list-events');
+  const visible = allEventsList
+    .filter(ev=>{
+      const proj = projectByName((ev.categories||[])[0]);
+      return !proj || activeProjects.has(proj.id);
+    })
+    .slice()
+    .sort((a,b)=> (a.start||'').localeCompare(b.start||''));
+
+  if(!visible.length){
+    wrap.innerHTML = '<p style="font-size:13px;color:#888780;">Aucun evenement sur cette periode.</p>';
+    return;
+  }
+  wrap.innerHTML = '';
+  visible.forEach(ev=>{
+    const proj = projectByName((ev.categories||[])[0]);
+    const startDay = ev.start.slice(0,10);
+    const endDay = inclusiveEndDay(ev);
+    const dObj = new Date(startDay+'T12:00:00');
+    let dateLabel = dObj.toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
+    if(endDay !== startDay){
+      const eObj = new Date(endDay+'T12:00:00');
+      dateLabel += ' au ' + eObj.toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
+    }
+    const timeLabel = ev.allDay ? 'Journee entiere' : (timeOf(ev.start) + (ev.end ? ' - ' + timeOf(ev.end) : ''));
+    const row = document.createElement('div');
+    row.className = 'ev-row';
+    row.innerHTML = `
+      <div class="row-top">
+        <span class="dot" style="background:${proj ? proj.color : '#B4B2A9'}"></span>
+        <span style="font-weight:500;">${ev.title}</span>
+      </div>
+      <div style="font-size:12px;color:#888780;margin:2px 0 0 16px;">${dateLabel} - ${timeLabel}${ev.location ? ' - '+ev.location : ''}${proj ? ' - '+proj.name : ''}</div>
+    `;
+    wrap.appendChild(row);
+  });
+}
+document.getElementById('list-view-btn').addEventListener('click', ()=>{
+  showSheet('list-panel');
+  renderListPanel();
+});
 
 function showSheet(id){
   document.getElementById(id).style.display = 'block';

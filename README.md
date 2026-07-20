@@ -40,6 +40,21 @@ Une fois termine, Render te donne une URL du type `https://agenda-projets.onrend
 
 Note sur le plan gratuit : le service s'endort apres 15 minutes sans visite et met quelques secondes a se reveiller au prochain chargement. C'est normal pour un usage personnel.
 
+## Rendre le stockage durable (recommande)
+
+Par defaut, tes projets personnalises et les soumissions en attente sont stockes dans de simples fichiers sur le serveur Render, qui peuvent etre reinitialises a chaque mise a jour du code. Pour eviter ca, connecte l'app a ton depot GitHub :
+
+1. Sur GitHub, va dans tes parametres de compte : **Settings > Developer settings > Personal access tokens > Fine-grained tokens > Generate new token**.
+2. Donne-lui un nom, limite-le a "Only select repositories" et choisis ton depot `agenda-projets`.
+3. Dans "Repository permissions", mets "Contents" sur **Read and write**.
+4. Genere le token et copie-le (tu ne pourras plus le revoir apres).
+5. Dans Render, section "Environment Variables", ajoute :
+   - `GITHUB_TOKEN` = le token copie
+   - `GITHUB_REPO` = `ton-compte-github/agenda-projets` (remplace par ton vrai nom de compte et de depot)
+6. Sauvegarde, Render redeploie automatiquement.
+
+Une fois configure, l'app ecrit directement tes projets et soumissions dans un dossier `data/` de ton depot GitHub a chaque changement — ils survivent a toutes les futures mises a jour. Si tu ne configures pas ces variables, l'app continue de fonctionner normalement, juste avec le risque de reinitialisation deja mentionne (un message te le rappelle dans le panneau "Gerer les projets" si c'est le cas).
+
 ## Etape 4 - Ouvrir sur iPhone
 
 1. Ouvre l'URL Render dans Safari sur ton iPhone.
@@ -57,6 +72,7 @@ Note sur le plan gratuit : le service s'endort apres 15 minutes sans visite et m
 - Le formulaire d'ajout permet de choisir une heure de debut/fin (ou de laisser "journee entiere"), un projet, et dans quel calendrier iCloud (Personnel, Travail, etc.) l'evenement doit etre cree.
 - La barre de recherche en haut cherche un evenement par titre sur les 5 prochaines annees et te propose de sauter directement a sa date.
 - Un champ "Lieu" (optionnel) est disponible a la creation et a l'edition d'un evenement ; il apparait aussi dans l'app Calendrier de ton iPhone.
+- "Vue liste" affiche tous les evenements de la periode dans l'ordre chronologique, avec date, heure, lieu et projet — pratique pour un recapitulatif complet plutot que la grille.
 - Un evenement cree ou modifie ici apparait automatiquement dans l'app Calendrier de ton iPhone, et inversement.
 
 ## Nouveau : partage et formulaire partenaires
@@ -76,11 +92,15 @@ Comme le depot n'est pas connecte a Git en ligne de commande, la facon la plus s
 2. Pour chaque fichier modifie, clique dessus, puis sur l'icone crayon (Edit), colle le nouveau contenu, et "Commit changes". Ou plus simple : utilise "Add file" > "Upload files" et depose les fichiers modifies, GitHub te proposera de remplacer les anciens.
 3. Des que le commit est valide, Render redeploie automatiquement (l'auto-deploy est active par defaut). Tu peux suivre la progression dans l'onglet "Logs" de ton service Render.
 
+## Corrige dans cette version
+
+- Bug corrige : un evenement "journee entiere" s'etalant sur un changement de mois (ex. 17 au 30 septembre) pouvait se dupliquer en boucle sur la vue annuelle. La date de fin est maintenant calculee correctement (y compris les changements de mois et d'annee).
+- Les projets et soumissions peuvent desormais etre stockes de facon durable dans ton depot GitHub (voir section ci-dessus) ; sans cette config, ils restent stockes localement sur Render et peuvent etre reinitialises a chaque mise a jour du code.
+
 ## Limites actuelles
 
 - Renommer un projet ne retague pas retroactivement les evenements deja crees avec l'ancien nom (seuls les nouveaux evenements utilisent le nouveau nom).
 - Les vacances scolaires sont basees sur les dates officielles publiees pour les annees 2025-2026 et 2026-2027 ; au-dela, l'appli n'affichera rien tant que les dates ne seront pas ajoutees dans `lib/holidays.js`.
-- Important : les projets et les soumissions en attente sont stockes dans de simples fichiers sur le serveur (pas dans iCloud). Sur l'hebergement gratuit Render, ces fichiers peuvent etre reinitialises a chaque fois que tu mets a jour le code (nouveau deploiement) — donc traite les soumissions en attente avant de pousser une mise a jour, et sache que tes projets personnalises peuvent revenir aux 4 projets par defaut apres une mise a jour. Dis-moi si tu veux que je rende ce stockage durable (c'est possible, ca demande un peu plus d'infrastructure).
 - L'app principale (edition) reste sans mot de passe, comme tu l'as choisi ; le lien lecture seule et le formulaire partenaire sont proteges uniquement par le fait que leurs adresses ne sont pas devinables.
 
 Dis-moi ce que tu veux ameliorer ensuite.

@@ -7,6 +7,7 @@ import { loadProjects, saveProjects, slugify } from './lib/projects.js';
 import { isHoliday, isVacation } from './lib/holidays.js';
 import { loadSubmissions, addSubmission, removeSubmission } from './lib/submissions.js';
 import { renderAnnualPdf, getMonths, isoDate, daysBetween } from './lib/pdf.js';
+import { isDurable } from './lib/datastore.js';
 
 dotenv.config();
 
@@ -29,7 +30,11 @@ app.get('/api/share-link', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, configured: Boolean(process.env.ICLOUD_USERNAME && process.env.ICLOUD_APP_PASSWORD) });
+  res.json({
+    ok: true,
+    configured: Boolean(process.env.ICLOUD_USERNAME && process.env.ICLOUD_APP_PASSWORD),
+    durableStorage: isDurable(),
+  });
 });
 
 app.get('/api/calendars', async (req, res) => {
@@ -41,38 +46,54 @@ app.get('/api/calendars', async (req, res) => {
   }
 });
 
-app.get('/api/projects', (req, res) => {
-  res.json(loadProjects());
-});
-
-app.post('/api/projects', (req, res) => {
-  const { name, color } = req.body;
-  if (!name || !color) return res.status(400).json({ error: 'name et color requis' });
-  const list = loadProjects();
-  const id = slugify(name);
-  if (!list.find((p) => p.id === id)) {
-    list.push({ id, name, color });
-    saveProjects(list);
+app.get('/api/projects', async (req, res) => {
+  try {
+    res.json(await loadProjects());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-  res.json(list);
 });
 
-app.put('/api/projects/:id', (req, res) => {
-  const { name, color } = req.body;
-  const list = loadProjects();
-  const project = list.find((p) => p.id === req.params.id);
-  if (!project) return res.status(404).json({ error: 'projet introuvable' });
-  if (name) project.name = name;
-  if (color) project.color = color;
-  saveProjects(list);
-  res.json(list);
+app.post('/api/projects', async (req, res) => {
+  try {
+    const { name, color } = req.body;
+    if (!name || !color) return res.status(400).json({ error: 'name et color requis' });
+    const list = await loadProjects();
+    const id = slugify(name);
+    if (!list.find((p) => p.id === id)) {
+      list.push({ id, name, color });
+      await saveProjects(list);
+    }
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.delete('/api/projects/:id', (req, res) => {
-  let list = loadProjects();
-  list = list.filter((p) => p.id !== req.params.id);
-  saveProjects(list);
-  res.json(list);
+app.put('/api/projects/:id', async (req, res) => {
+  try {
+    const { name, color } = req.body;
+    const list = await loadProjects();
+    const project = list.find((p) => p.id === req.params.id);
+    if (!project) return res.status(404).json({ error: 'projet introuvable' });
+    if (name) project.name = name;
+    if (color) project.color = color;
+    await saveProjects(list);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/projects/:id', async (req, res) => {
+  try {
+    let list = await loadProjects();
+    list = list.filter((p) => p.id !== req.params.id);
+    await saveProjects(list);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/api/events', async (req, res) => {
@@ -91,7 +112,7 @@ app.post('/api/events', async (req, res) => {
   try {
     const { title, start, end, allDay, projectId, calendarUrl, location } = req.body;
     if (!title || !start) return res.status(400).json({ error: 'title et start requis' });
-    const projects = loadProjects();
+    const projects = await loadProjects();
     const project = projects.find((p) => p.id === projectId);
     const result = await createEvent({
       title,
@@ -115,7 +136,7 @@ app.put('/api/events', async (req, res) => {
     if (!url || !uid || !title || !start) {
       return res.status(400).json({ error: 'url, uid, title et start requis' });
     }
-    const projects = loadProjects();
+    const projects = await loadProjects();
     const project = projects.find((p) => p.id === projectId);
     const result = await updateEvent({
       url,
@@ -161,47 +182,59 @@ app.delete('/api/events', async (req, res) => {
   }
 });
 
-app.get('/api/submissions', (req, res) => {
-  res.json(loadSubmissions());
+app.get('/api/submissions', async (req, res) => {
+  try {
+    res.json(await loadSubmissions());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.post('/api/submissions', (req, res) => {
-  const { title, projectLabel, start, end, allDay, startTime, endTime, location, contactName, contactEmail } = req.body;
-  if (!title || !start) return res.status(400).json({ error: 'title et start requis' });
-  const entry = addSubmission({
-    title,
-    projectLabel: projectLabel || '',
-    start,
-    end: end || start,
-    allDay: Boolean(allDay),
-    startTime: startTime || null,
-    endTime: endTime || null,
-    location: location || '',
-    contactName: contactName || '',
-    contactEmail: contactEmail || '',
-  });
-  res.json({ ok: true, id: entry.id });
+app.post('/api/submissions', async (req, res) => {
+  try {
+    const { title, projectLabel, start, end, allDay, startTime, endTime, location, contactName, contactEmail } = req.body;
+    if (!title || !start) return res.status(400).json({ error: 'title et start requis' });
+    const entry = await addSubmission({
+      title,
+      projectLabel: projectLabel || '',
+      start,
+      end: end || start,
+      allDay: Boolean(allDay),
+      startTime: startTime || null,
+      endTime: endTime || null,
+      location: location || '',
+      contactName: contactName || '',
+      contactEmail: contactEmail || '',
+    });
+    res.json({ ok: true, id: entry.id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.delete('/api/submissions/:id', (req, res) => {
-  const list = removeSubmission(req.params.id);
-  res.json(list);
+app.delete('/api/submissions/:id', async (req, res) => {
+  try {
+    const list = await removeSubmission(req.params.id);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.post('/api/submissions/:id/approve', async (req, res) => {
   try {
     const { projectId, newProjectName, newProjectColor, calendarUrl } = req.body;
-    const submissions = loadSubmissions();
+    const submissions = await loadSubmissions();
     const sub = submissions.find((s) => s.id === req.params.id);
     if (!sub) return res.status(404).json({ error: 'soumission introuvable' });
 
-    let projects = loadProjects();
+    let projects = await loadProjects();
     let category;
     if (newProjectName) {
       const id = slugify(newProjectName);
       if (!projects.find((p) => p.id === id)) {
         projects.push({ id, name: newProjectName, color: newProjectColor || '#7F77DD' });
-        saveProjects(projects);
+        await saveProjects(projects);
       }
       category = newProjectName;
     } else if (projectId) {
@@ -226,7 +259,7 @@ app.post('/api/submissions/:id/approve', async (req, res) => {
       location: sub.location,
     });
 
-    removeSubmission(sub.id);
+    await removeSubmission(sub.id);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -260,7 +293,7 @@ app.get('/api/export/pdf', async (req, res) => {
       });
     });
 
-    const projects = loadProjects();
+    const projects = await loadProjects();
     const holidaysMap = {};
     const vacationsMap = {};
     months.forEach((m) => {
