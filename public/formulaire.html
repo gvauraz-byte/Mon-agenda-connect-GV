@@ -4,43 +4,59 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Proposer un projet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --bg: #F6F4EF; --surface: #FFFFFF; --border: #E4E0D3; --border-strong: #CBC6B6;
+    --text: #22201A; --text-muted: #85806E; --accent: #1D5FA8;
+    --danger: #A32D2D; --danger-soft: #FBEAE5;
+    --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
+    --shadow-card: 0 1px 2px rgba(34,29,17,0.04), 0 16px 40px -20px rgba(34,29,17,0.28);
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: #F7F6F3;
-    color: #2C2C2A;
+    background: var(--bg);
+    color: var(--text);
     padding: 20px;
   }
   .card {
     max-width: 480px;
-    margin: 0 auto;
-    background: #fff;
-    border-radius: 12px;
-    padding: 24px;
-    border: 1px solid #D3D1C7;
+    margin: 40px auto 0;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 28px 26px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
   }
-  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
-  p.intro { font-size: 13px; color: #888780; margin: 0 0 20px; }
-  label { display: block; font-size: 13px; font-weight: 500; margin: 14px 0 4px; }
+  h1 { font-family: 'Fraunces', Georgia, serif; font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+  p.intro { font-size: 13px; color: var(--text-muted); margin: 0 0 20px; line-height: 1.5; }
+  label { display: block; font-size: 13px; font-weight: 500; margin: 14px 0 4px; color: var(--text); }
   input[type=text], input[type=email], input[type=date], input[type=time], textarea {
-    width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid #D3D1C7; font-size: 14px;
+    width: 100%; padding: 10px 11px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
+  input:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft, #EAF1F9); }
   .row { display: flex; gap: 10px; }
   .row > div { flex: 1; }
   .allday-row { display: flex; align-items: center; gap: 6px; margin-top: 14px; font-size: 13px; }
   .locked-project {
-    background: #F1EFE8; border-radius: 8px; padding: 8px 10px; font-size: 14px; display: flex; align-items: center; gap: 8px;
+    background: var(--bg); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 14px; display: flex; align-items: center; gap: 8px;
   }
   .locked-project .dot { width: 10px; height: 10px; border-radius: 50%; }
   button[type=submit] {
-    margin-top: 20px; width: 100%; padding: 12px; border-radius: 8px; border: none;
-    background: #2C2C2A; color: #fff; font-size: 14px; cursor: pointer;
+    margin-top: 22px; width: 100%; padding: 13px; border-radius: var(--radius-sm); border: none;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: var(--text); color: #fff; font-size: 14px; font-weight: 500; cursor: pointer;
+    transition: opacity 0.15s ease;
   }
-  #confirmation { display: none; text-align: center; padding: 20px 0; }
-  #confirmation h2 { font-size: 16px; margin: 0 0 6px; }
-  #confirmation p { font-size: 13px; color: #888780; }
+  button[type=submit]:hover { opacity: 0.9; }
+  #confirmation { display: none; text-align: center; padding: 24px 0 8px; }
+  #confirmation h2 { font-family: 'Fraunces', Georgia, serif; font-size: 17px; margin: 0 0 6px; }
+  #confirmation p { font-size: 13px; color: var(--text-muted); }
 </style>
 </head>
 <body>
@@ -53,12 +69,12 @@
     <form id="submit-form">
       <div id="project-field"></div>
 
-      <label>Titre <span style="color:#A32D2D;">*</span></label>
+      <label>Titre <span style="color:var(--danger);">*</span></label>
       <input type="text" id="title" required placeholder="Ex : tournage clip promo">
 
       <div class="row">
         <div>
-          <label>Date de debut <span style="color:#A32D2D;">*</span></label>
+          <label>Date de debut <span style="color:var(--danger);">*</span></label>
           <input type="date" id="start-date" required>
         </div>
         <div>
@@ -92,7 +108,7 @@
       <label>Ton email (optionnel)</label>
       <input type="email" id="contact-email">
 
-      <button type="submit">Envoyer la proposition</button>
+      <button type="submit"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>Envoyer la proposition</button>
     </form>
   </div>
 

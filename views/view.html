@@ -4,62 +4,78 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Agenda projets (lecture seule)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --bg: #F6F4EF; --surface: #FFFFFF; --border: #E4E0D3; --border-strong: #CBC6B6;
+    --text: #22201A; --text-muted: #85806E; --text-faint: #ACA795;
+    --accent: #1D5FA8; --accent-soft: #EAF1F9; --danger: #A32D2D; --danger-soft: #FBEAE5;
+    --radius-sm: 8px; --radius-md: 12px; --radius-lg: 20px;
+    --shadow-card: 0 1px 2px rgba(34,29,17,0.04), 0 10px 24px -16px rgba(34,29,17,0.22);
+    --shadow-sheet: 0 -10px 40px rgba(34,29,17,0.2);
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: #F7F6F3;
-    color: #2C2C2A;
-    padding: 12px;
+    background: var(--bg);
+    color: var(--text);
+    padding: 14px;
   }
-  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 10px; flex-wrap: wrap; }
-  header h1 { font-size: 18px; font-weight: 600; margin: 0; }
-  .badge { font-size: 11px; color: #888780; border: 1px solid #D3D1C7; border-radius: 999px; padding: 2px 8px; }
+  .icon { display: inline-block; vertical-align: -2px; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 10px; flex-wrap: wrap; }
+  header h1 { font-family: 'Fraunces', Georgia, serif; font-size: 19px; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 8px; }
+  .badge { font-size: 11px; color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; }
   .period-nav { display: flex; align-items: center; gap: 10px; }
-  .period-nav button { border: 1px solid #D3D1C7; background: #fff; border-radius: 8px; width: 32px; height: 32px; font-size: 16px; cursor: pointer; }
+  .period-nav button { display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm); width: 32px; height: 32px; cursor: pointer; color: var(--text); transition: background 0.15s ease, border-color 0.15s ease; }
+  .period-nav button:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
   .period-nav button:disabled { opacity: 0.3; cursor: default; }
   .period-label { font-size: 14px; font-weight: 500; min-width: 170px; text-align: center; }
   .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; align-items: center; }
-  .chip { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; border: 1px solid #D3D1C7; background: #fff; font-size: 12px; cursor: pointer; user-select: none; }
+  .chip { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; cursor: pointer; user-select: none; transition: opacity 0.15s ease, border-color 0.15s ease; }
+  .chip:hover { border-color: var(--border-strong); }
   .chip.off { opacity: 0.4; }
   .chip .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-  .divider { border-top: 1px solid #D3D1C7; margin: 8px 0 10px; }
-  select.zone-select { font-size: 12px; padding: 3px 6px; border-radius: 6px; border: 1px solid #D3D1C7; }
-  .table-wrap { overflow-x: auto; background: #fff; border-radius: 10px; padding: 8px; }
+  .divider { border-top: 1px solid var(--border); margin: 8px 0 12px; }
+  select.zone-select { font-size: 12px; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  .table-wrap { overflow-x: auto; background: var(--surface); border-radius: var(--radius-md); padding: 8px; box-shadow: var(--shadow-card); border: 1px solid var(--border); }
   table { border-collapse: collapse; table-layout: fixed; width: 100%; min-width: 960px; font-size: 11px; }
-  th { padding: 5px 2px; font-weight: 600; color: #5F5E5A; text-align: center; border-bottom: 1px solid #B4B2A9; }
-  td { padding: 2px 3px; text-align: left; vertical-align: top; position: relative; cursor: pointer; border-bottom: 1px solid #EFEEEA; }
-  td:hover { outline: 1px solid #B4B2A9; outline-offset: -1px; }
+  th { padding: 5px 2px; font-weight: 600; color: var(--text-muted); text-align: center; border-bottom: 1px solid var(--border-strong); }
+  td { padding: 2px 3px; text-align: left; vertical-align: top; position: relative; cursor: pointer; border-bottom: 1px solid var(--bg); }
+  td:hover { outline: 1px solid var(--border-strong); outline-offset: -1px; }
   .ev-line { font-size: 9.5px; display: flex; align-items: flex-start; gap: 3px; white-space: normal; }
   .ev-line .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
   .ev-line .ev-text { flex: 1; min-width: 0; word-break: break-word; }
-  .ev-more { font-size: 9.5px; color: #888780; }
-  .hol-label { font-size: 9.5px; color: #A32D2D; overflow: hidden; text-overflow: ellipsis; }
-  #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.25); z-index: 5; }
-  .sheet { display: none; position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid #D3D1C7; border-radius: 16px 16px 0 0; padding: 16px; max-height: 60vh; overflow-y: auto; box-shadow: 0 -4px 20px rgba(0,0,0,0.12); z-index: 6; }
-  .sheet .close { float: right; border: none; background: none; font-size: 18px; cursor: pointer; }
-  .ev-row { padding: 8px 0; border-bottom: 1px solid #F1EFE8; font-size: 13px; }
+  .ev-more { font-size: 9.5px; color: var(--text-muted); }
+  .hol-label { font-size: 9.5px; color: var(--danger); overflow: hidden; text-overflow: ellipsis; }
+  #overlay { display: none; position: fixed; inset: 0; background: rgba(34,29,17,0.3); z-index: 5; }
+  .sheet { display: none; position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--border); border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 18px 16px; max-height: 60vh; overflow-y: auto; box-shadow: var(--shadow-sheet); z-index: 6; }
+  .sheet h3 { font-family: 'Fraunces', Georgia, serif; }
+  .sheet .close { float: right; border: none; background: none; cursor: pointer; color: var(--text-muted); padding: 4px; border-radius: 999px; transition: background 0.15s ease, color 0.15s ease; }
+  .sheet .close:hover { background: var(--bg); color: var(--text); }
+  .ev-row { padding: 8px 0; border-bottom: 1px solid var(--bg); font-size: 13px; }
   .ev-row .row-top { display: flex; align-items: center; gap: 8px; }
   .ev-row .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .ev-row .time { color: #888780; font-size: 12px; margin-left: auto; }
-  .ev-row .loc { font-size: 12px; color: #888780; margin-left: 16px; }
+  .ev-row .time { color: var(--text-muted); font-size: 12px; margin-left: auto; }
+  .ev-row .loc { font-size: 12px; color: var(--text-muted); margin-left: 16px; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Agenda projets <span class="badge">lecture seule</span></h1>
+  <h1><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>Agenda projets <span class="badge">lecture seule</span></h1>
   <div class="period-nav">
-    <button id="prev-btn" aria-label="Periode precedente">&#8592;</button>
+    <button id="prev-btn" aria-label="Periode precedente"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
     <span class="period-label" id="period-label"></span>
-    <button id="next-btn" aria-label="Periode suivante">&#8594;</button>
+    <button id="next-btn" aria-label="Periode suivante"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
   </div>
 </header>
 
 <div class="chip-row" id="project-chips"></div>
 <div class="chip-row" id="extra-chips"></div>
-<div class="chip-row"><button type="button" class="chip" id="list-view-btn">Vue liste</button></div>
+<div class="chip-row"><button type="button" class="chip" id="list-view-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>Vue liste</button></div>
 <div class="divider"></div>
 
 <div class="table-wrap">
@@ -68,13 +84,13 @@
 
 <div id="overlay"></div>
 <div class="sheet" id="panel">
-  <button class="close" data-close="panel">&times;</button>
+  <button class="close" data-close="panel"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
   <h3 id="panel-date"></h3>
   <div id="panel-events"></div>
 </div>
 
 <div class="sheet" id="list-panel">
-  <button class="close" data-close="list-panel">&times;</button>
+  <button class="close" data-close="list-panel"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
   <h3>Liste chronologique</h3>
   <div id="list-events"></div>
 </div>

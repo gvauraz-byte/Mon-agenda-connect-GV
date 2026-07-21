@@ -6,145 +6,264 @@
 <title>Agenda projets</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Agenda">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --bg: #F6F4EF;
+    --surface: #FFFFFF;
+    --border: #E4E0D3;
+    --border-strong: #CBC6B6;
+    --text: #22201A;
+    --text-muted: #85806E;
+    --text-faint: #ACA795;
+    --accent: #1D5FA8;
+    --accent-soft: #EAF1F9;
+    --danger: #A32D2D;
+    --danger-soft: #FBEAE5;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 20px;
+    --shadow-card: 0 1px 2px rgba(34,29,17,0.04), 0 10px 24px -16px rgba(34,29,17,0.22);
+    --shadow-pop: 0 12px 32px -8px rgba(34,29,17,0.28);
+    --shadow-sheet: 0 -10px 40px rgba(34,29,17,0.2);
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: #F7F6F3;
-    color: #2C2C2A;
-    padding: 12px;
+    background: var(--bg);
+    color: var(--text);
+    padding: 14px 14px 28px;
+    -webkit-font-smoothing: antialiased;
   }
+  .icon { display: inline-block; vertical-align: -3px; flex-shrink: 0; }
+  button, input, select { font-family: inherit; }
+
   #setup-notice {
     display: none;
     background: #FAECE7;
     color: #712B13;
     padding: 12px 16px;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     margin-bottom: 14px;
     font-size: 14px;
+    box-shadow: var(--shadow-card);
   }
+
   header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 10px;
-    gap: 10px;
+    margin-bottom: 14px;
+    gap: 12px;
     flex-wrap: wrap;
   }
-  header h1 { font-size: 18px; font-weight: 600; margin: 0; }
-  .period-nav { display: flex; align-items: center; gap: 10px; }
-  .period-nav button {
-    border: 1px solid #D3D1C7;
-    background: #fff;
-    border-radius: 8px;
-    width: 32px; height: 32px;
-    font-size: 16px;
-    cursor: pointer;
+  header h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
+  header h1 .icon { color: var(--accent); }
+  .period-nav { display: flex; align-items: center; gap: 8px; }
+  .period-nav button {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 999px;
+    width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-card);
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  }
+  .period-nav button:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent); }
+  .period-nav button:active:not(:disabled) { transform: scale(0.94); }
   .period-nav button:disabled { opacity: 0.3; cursor: default; }
   .period-label { font-size: 14px; font-weight: 500; min-width: 170px; text-align: center; }
 
-  #search-row { display: flex; gap: 6px; margin-bottom: 10px; }
+  #search-row { display: flex; gap: 8px; margin-bottom: 10px; }
   #search-row input {
-    flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid #D3D1C7; font-size: 13px;
+    flex: 1; padding: 9px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--surface); font-size: 13px; box-shadow: var(--shadow-card);
   }
+  #search-row input:focus { outline: none; border-color: var(--accent); }
   #search-row button {
-    padding: 8px 12px; border-radius: 8px; border: 1px solid #D3D1C7; background: #fff; cursor: pointer; font-size: 13px;
+    display: flex; align-items: center; gap: 6px;
+    padding: 9px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--surface); cursor: pointer; font-size: 13px;
+    box-shadow: var(--shadow-card);
+    transition: background 0.15s ease, border-color 0.15s ease;
   }
+  #search-row button:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
   #search-results {
-    background: #fff; border-radius: 10px; padding: 8px; margin-bottom: 10px; display: none;
+    background: var(--surface); border-radius: var(--radius-md); padding: 8px; margin-bottom: 10px; display: none;
+    box-shadow: var(--shadow-card);
   }
   .search-hit {
-    display: flex; align-items: center; gap: 8px; padding: 6px 4px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #F1EFE8;
+    display: flex; align-items: center; gap: 8px; padding: 8px 6px; font-size: 13px; cursor: pointer;
+    border-bottom: 1px solid var(--bg); border-radius: 6px;
   }
-  .search-hit:hover { background: #F7F6F3; }
-  .search-hit .date { color: #888780; font-size: 12px; margin-left: auto; }
+  .search-hit:last-child { border-bottom: none; }
+  .search-hit:hover { background: var(--bg); }
+  .search-hit .date { color: var(--text-muted); font-size: 12px; margin-left: auto; }
 
-  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; align-items: center; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 9px; align-items: center; }
   .chip {
-    display: flex; align-items: center; gap: 6px;
-    padding: 5px 10px; border-radius: 999px;
-    border: 1px solid #D3D1C7; background: #fff;
-    font-size: 12px; cursor: pointer; user-select: none;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--surface);
+    font-size: 12px; font-weight: 500; cursor: pointer; user-select: none;
+    box-shadow: var(--shadow-card);
+    transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
   }
-  .chip.off { opacity: 0.4; }
+  .chip:hover { border-color: var(--border-strong); }
+  .chip:active { transform: scale(0.97); }
+  .chip.off { opacity: 0.42; box-shadow: none; }
   .chip .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
   .chip.add { border-style: dashed; }
-  .chip.ghost { border: none; background: none; color: #5F5E5A; text-decoration: underline; }
-  .divider { border-top: 1px solid #D3D1C7; margin: 8px 0 10px; }
+  .chip.ghost { border: none; background: none; box-shadow: none; color: var(--text-muted); }
+  .chip.ghost:hover { color: var(--accent); }
+  .divider { border-top: 1px solid var(--border); margin: 10px 0 12px; }
 
-  select.zone-select { font-size: 12px; padding: 3px 6px; border-radius: 6px; border: 1px solid #D3D1C7; }
+  select.zone-select { font-size: 12px; padding: 4px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); }
 
-  .table-wrap { overflow-x: auto; background: #fff; border-radius: 10px; padding: 8px; }
+  .table-wrap { overflow-x: auto; background: var(--surface); border-radius: var(--radius-md); padding: 10px; box-shadow: var(--shadow-card); }
   table { border-collapse: collapse; table-layout: fixed; width: 100%; min-width: 960px; font-size: 11px; }
-  th { padding: 5px 2px; font-weight: 600; color: #5F5E5A; text-align: center; border-bottom: 1px solid #B4B2A9; }
+  th { padding: 8px 2px; font-weight: 600; color: var(--text-muted); text-align: center; border-bottom: 1px solid var(--border-strong); letter-spacing: 0.02em; }
   td {
-    padding: 2px 3px; text-align: left; vertical-align: top;
+    padding: 3px 4px; text-align: left; vertical-align: top;
     position: relative; cursor: pointer;
-    border-bottom: 1px solid #EFEEEA;
+    border-bottom: 1px solid var(--bg);
+    transition: background 0.1s ease;
   }
-  td:hover { outline: 1px solid #B4B2A9; outline-offset: -1px; }
+  td:hover { outline: 1.5px solid var(--border-strong); outline-offset: -1.5px; border-radius: 4px; }
   .ev-line { font-size: 9.5px; display: flex; align-items: flex-start; gap: 3px; white-space: normal; }
   .ev-line .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
   .ev-line .ev-text { flex: 1; min-width: 0; word-break: break-word; }
-  .ev-more { font-size: 9.5px; color: #888780; }
-  .hol-label { font-size: 9.5px; color: #A32D2D; overflow: hidden; text-overflow: ellipsis; }
+  .ev-more { font-size: 9.5px; color: var(--text-muted); }
+  .hol-label { font-size: 9.5px; color: var(--danger); overflow: hidden; text-overflow: ellipsis; }
 
-  #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.25); z-index: 5; }
+  #overlay { display: none; position: fixed; inset: 0; background: rgba(24,21,14,0.32); backdrop-filter: blur(1px); z-index: 5; }
   .sheet {
     display: none;
     position: fixed; left: 0; right: 0; bottom: 0;
-    background: #fff; border-top: 1px solid #D3D1C7;
-    border-radius: 16px 16px 0 0; padding: 16px;
-    max-height: 70vh; overflow-y: auto;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.12);
+    background: var(--surface); border-top: 1px solid var(--border);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 20px 18px 18px;
+    max-height: 78vh; overflow-y: auto;
+    box-shadow: var(--shadow-sheet);
     z-index: 6;
   }
-  .sheet h3 { margin: 0 0 10px; font-size: 15px; }
-  .sheet .close { float: right; border: none; background: none; font-size: 18px; cursor: pointer; }
+  .sheet::before {
+    content: ''; position: sticky; top: -8px; display: block;
+    width: 36px; height: 4px; border-radius: 999px; background: var(--border-strong);
+    margin: -8px auto 12px;
+  }
+  .sheet h3 {
+    font-family: 'Fraunces', Georgia, serif; font-weight: 600;
+    margin: 0 0 12px; font-size: 17px; letter-spacing: -0.01em;
+  }
+  .sheet .close {
+    float: right; border: none; background: var(--bg); color: var(--text-muted);
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; margin: -4px -4px 0 8px;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .sheet .close:hover { background: var(--danger-soft); color: var(--danger); }
 
   .ev-row {
-    padding: 8px 0; border-bottom: 1px solid #F1EFE8; font-size: 13px;
+    padding: 10px 0; border-bottom: 1px solid var(--bg); font-size: 13px;
   }
-  .ev-row .row-top { display: flex; align-items: center; gap: 8px; }
+  .ev-row:last-child { border-bottom: none; }
+  .ev-row .row-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .ev-row .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .ev-row .time { color: #888780; font-size: 12px; }
-  .ev-row .actions { margin-left: auto; display: flex; gap: 10px; }
-  .ev-row .actions button { border: none; background: none; cursor: pointer; font-size: 12px; }
-  .ev-row .actions .edit { color: #185FA5; }
-  .ev-row .actions .del { color: #A32D2D; }
-  .edit-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; padding: 10px; background: #F7F6F3; border-radius: 8px; }
-  .edit-form input[type=text] { flex: 1; min-width: 140px; padding: 7px; border-radius: 8px; border: 1px solid #D3D1C7; }
-  .edit-form input[type=time] { padding: 7px; border-radius: 8px; border: 1px solid #D3D1C7; }
-  .edit-form select { padding: 7px; border-radius: 8px; border: 1px solid #D3D1C7; }
+  .ev-row .time { color: var(--text-muted); font-size: 12px; }
+  .ev-row .actions { margin-left: auto; display: flex; gap: 4px; }
+  .ev-row .actions button {
+    display: flex; align-items: center; gap: 4px;
+    border: none; background: none; cursor: pointer; font-size: 12px;
+    padding: 5px 8px; border-radius: var(--radius-sm);
+    transition: background 0.15s ease;
+  }
+  .ev-row .actions .edit { color: var(--accent); }
+  .ev-row .actions .edit:hover { background: var(--accent-soft); }
+  .ev-row .actions .dup { color: var(--text-muted); }
+  .ev-row .actions .dup:hover { background: var(--bg); }
+  .ev-row .actions .del { color: var(--danger); }
+  .ev-row .actions .del:hover { background: var(--danger-soft); }
+  .edit-form { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; padding: 12px; background: var(--bg); border-radius: var(--radius-md); }
+  .edit-form input[type=text] { flex: 1; min-width: 140px; padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); }
+  .edit-form input[type=time] { padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); }
+  .edit-form select { padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); }
   .edit-form label.allday { display: flex; align-items: center; gap: 4px; font-size: 12px; }
-  .edit-form .row-buttons { display: flex; gap: 6px; width: 100%; }
-  .edit-form button { padding: 7px 12px; border-radius: 8px; border: none; cursor: pointer; font-size: 12px; }
-  .edit-form .save { background: #2C2C2A; color: #fff; }
-  .edit-form .cancel { background: #E9E7E1; }
+  .edit-form .row-buttons { display: flex; gap: 8px; width: 100%; }
+  .edit-form button {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: var(--radius-sm); border: none; cursor: pointer; font-size: 12px;
+    transition: opacity 0.15s ease;
+  }
+  .edit-form button:hover { opacity: 0.88; }
+  .edit-form .save { background: var(--text); color: #fff; }
+  .edit-form .cancel { background: #EAE7DC; color: var(--text); }
 
-  #add-form { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
-  #add-form input[type=text] { flex: 1; min-width: 140px; padding: 8px; border-radius: 8px; border: 1px solid #D3D1C7; }
-  #add-form input[type=time] { padding: 8px; border-radius: 8px; border: 1px solid #D3D1C7; width: 90px; }
-  #add-form select { padding: 8px; border-radius: 8px; border: 1px solid #D3D1C7; }
+  #add-form { display: flex; gap: 7px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+  #add-form input[type=text] { flex: 1; min-width: 140px; padding: 9px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); }
+  #add-form input[type=time] { padding: 9px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); width: 92px; }
+  #add-form select { padding: 9px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); }
   #add-form label.allday { display: flex; align-items: center; gap: 4px; font-size: 12px; }
   #add-form button[type=submit] {
-    padding: 8px 14px; border-radius: 8px; border: none;
-    background: #2C2C2A; color: #fff; cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    padding: 9px 16px; border-radius: var(--radius-sm); border: none;
+    background: var(--text); color: #fff; cursor: pointer; font-weight: 500;
+    box-shadow: var(--shadow-card);
+    transition: opacity 0.15s ease, transform 0.1s ease;
   }
+  #add-form button[type=submit]:hover { opacity: 0.9; }
+  #add-form button[type=submit]:active { transform: scale(0.97); }
 
   #projects-list { margin-bottom: 12px; }
-  .proj-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #F1EFE8; flex-wrap: wrap; }
+  .proj-row { display: flex; align-items: center; gap: 6px; padding: 8px 0; border-bottom: 1px solid var(--bg); flex-wrap: wrap; }
+  .proj-row:last-child { border-bottom: none; }
   .proj-row input[type=text] { min-width: 100px; }
-  .proj-row button { font-size: 12px; white-space: nowrap; }
-  .proj-row input[type=color] { width: 28px; height: 28px; border: none; padding: 0; border-radius: 50%; overflow: hidden; }
-  .proj-row input[type=text] { flex: 1; padding: 7px; border-radius: 8px; border: 1px solid #D3D1C7; }
-  .proj-row button { border: none; background: none; color: #A32D2D; cursor: pointer; font-size: 12px; }
+  .proj-row button {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 12px; white-space: nowrap;
+    padding: 6px 8px; border-radius: var(--radius-sm);
+    transition: background 0.15s ease;
+    border: none; background: none; color: var(--text-muted); cursor: pointer;
+  }
+  .proj-row input[type=color] { width: 28px; height: 28px; border: none; padding: 0; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 1px var(--border); }
+  .proj-row input[type=text] { flex: 1; padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); }
+  .proj-row button:hover { background: var(--accent-soft); color: var(--accent); }
+  .proj-row button.danger-btn { color: var(--danger); }
+  .proj-row button.danger-btn:hover { background: var(--danger-soft); color: var(--danger); }
+  .proj-row button.visibility { padding: 6px; }
   #new-project-row { display: flex; gap: 8px; align-items: center; }
-  #new-project-row input[type=text] { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #D3D1C7; }
-  #new-project-row input[type=color] { width: 32px; height: 32px; border: none; border-radius: 50%; }
-  #new-project-row button { padding: 8px 12px; border-radius: 8px; border: none; background: #2C2C2A; color: #fff; cursor: pointer; }
+  #new-project-row input[type=text] { flex: 1; padding: 9px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); }
+  #new-project-row input[type=color] { width: 32px; height: 32px; border: none; border-radius: 50%; box-shadow: 0 0 0 1px var(--border); }
+  #new-project-row button {
+    display: flex; align-items: center; gap: 6px;
+    padding: 9px 14px; border-radius: var(--radius-sm); border: none; background: var(--text); color: #fff; cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+  #new-project-row button:hover { opacity: 0.9; }
+
+  .menu-pop {
+    display: none; position: absolute; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: 6px; box-shadow: var(--shadow-pop); z-index: 20; min-width: 200px;
+  }
+  .menu-pop button {
+    display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+    padding: 9px 10px; border: none; background: none; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--text);
+    transition: background 0.15s ease;
+  }
+  .menu-pop button:hover { background: var(--bg); }
 </style>
 </head>
 <body>
@@ -154,17 +273,17 @@
 </div>
 
 <header>
-  <h1>Agenda projets</h1>
+  <h1><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon"><rect x="3" y="4.5" width="18" height="16" rx="2.5"></rect><path d="M8 2.5v4M16 2.5v4M3 9.5h18"></path></svg>Agenda projets</h1>
   <div class="period-nav">
-    <button id="prev-btn" aria-label="Periode precedente">&#8592;</button>
+    <button id="prev-btn" aria-label="Periode precedente"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><polyline points="14.5 4.5 8 12 14.5 19.5"></polyline></svg></button>
     <span class="period-label" id="period-label"></span>
-    <button id="next-btn" aria-label="Periode suivante">&#8594;</button>
+    <button id="next-btn" aria-label="Periode suivante"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><polyline points="9.5 4.5 16 12 9.5 19.5"></polyline></svg></button>
   </div>
 </header>
 
 <div id="search-row">
   <input type="text" id="search-input" placeholder="Rechercher un evenement">
-  <button id="search-btn">Chercher</button>
+  <button id="search-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><circle cx="10.5" cy="10.5" r="6.5"></circle><line x1="20" y1="20" x2="15.3" y2="15.3"></line></svg>Chercher</button>
 </div>
 <div id="search-results"></div>
 
@@ -180,12 +299,12 @@
 <div id="overlay"></div>
 
 <div class="sheet" id="panel">
-  <button class="close" data-close="panel">&times;</button>
+  <button class="close" data-close="panel"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
   <h3 id="panel-date"></h3>
   <div id="panel-events"></div>
   <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 10px;">
     <div id="quick-titles" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
-    <button type="button" class="chip ghost" id="manage-quick-titles-btn" style="font-size:11px;">Gerer les titres rapides</button>
+    <button type="button" class="chip ghost" id="manage-quick-titles-btn" style="font-size:11px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M4 4h7l9 9-7 7-9-9V4Z"></path><circle cx="8.5" cy="8.5" r="1.3"></circle></svg>Gerer les titres rapides</button>
   </div>
   <form id="add-form">
     <input type="text" id="new-title" placeholder="Nouvel evenement" required>
@@ -202,64 +321,67 @@
     </select>
     <select id="new-project"><option value="">Sans projet</option></select>
     <select id="new-calendar"></select>
-    <button type="submit">Ajouter</button>
+    <button type="submit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>Ajouter</button>
   </form>
-  <div style="margin-top:10px;padding-top:10px;border-top:1px solid #F1EFE8;">
-    <p style="font-size:12px;color:#888780;margin:0 0 6px;">Ou propose ce rendez-vous par lien : il ne sera ajoute a ton agenda que si la personne l'accepte.</p>
+  <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+    <p style="font-size:12px;color:var(--text-muted);margin:0 0 6px;">Ou propose ce rendez-vous par lien : il ne sera ajoute a ton agenda que si la personne l'accepte.</p>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;position:relative;">
-      <input type="text" id="new-share-contact" placeholder="Contact : tel ou email (optionnel)" style="flex:1;min-width:160px;padding:8px;border-radius:8px;border:1px solid #D3D1C7;">
-      <button type="button" id="share-proposal-btn" style="padding:8px 12px;border-radius:8px;border:1px solid #185FA5;background:#fff;color:#185FA5;cursor:pointer;">Partager ▾</button>
-      <div id="share-proposal-menu" style="display:none;position:absolute;top:42px;right:0;background:#fff;border:1px solid #D3D1C7;border-radius:10px;padding:6px;box-shadow:0 4px 16px rgba(0,0,0,0.14);z-index:20;min-width:180px;"></div>
+      <input type="text" id="new-share-contact" placeholder="Contact : tel ou email (optionnel)" style="flex:1;min-width:160px;padding:8px;border-radius:8px;border:1px solid var(--border);">
+      <button type="button" id="share-proposal-btn" style="display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:8px;border:1px solid var(--accent);background:#fff;color:var(--accent);cursor:pointer;font-weight:500;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon"><circle cx="18" cy="5" r="2.4"></circle><circle cx="6" cy="12" r="2.4"></circle><circle cx="18" cy="19" r="2.4"></circle><line x1="8.1" y1="10.6" x2="15.9" y2="6.4"></line><line x1="8.1" y1="13.4" x2="15.9" y2="17.6"></line></svg>
+        Partager
+      </button>
+      <div id="share-proposal-menu" class="menu-pop" style="top:42px;right:0;"></div>
     </div>
   </div>
 </div>
 
 <div class="sheet" id="projects-panel">
-  <button class="close" data-close="projects-panel">&times;</button>
+  <button class="close" data-close="projects-panel"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
   <h3>Gerer les projets</h3>
   <p id="storage-notice" style="display:none;font-size:12px;color:#A32D2D;background:#FAECE7;padding:8px 10px;border-radius:8px;">Stockage non durable : ces projets peuvent revenir a leurs valeurs par defaut apres une mise a jour du code. Ajoute GITHUB_TOKEN et GITHUB_REPO pour les rendre permanents (voir README).</p>
   <div id="projects-list"></div>
   <div id="new-project-row">
     <input type="text" id="new-project-name" placeholder="Nom du nouveau projet">
     <input type="color" id="new-project-color" value="#7F77DD">
-    <button id="new-project-add">Ajouter</button>
+    <button id="new-project-add"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>Ajouter</button>
   </div>
   <p style="font-size:12px;color:#888780;margin-top:12px;">Touche "Lien formulaire" sur un projet pour copier un lien a envoyer a un partenaire, deja fixe sur ce projet.</p>
 </div>
 
 <div class="sheet" id="quick-titles-panel">
-  <button class="close" data-close="quick-titles-panel">&times;</button>
+  <button class="close" data-close="quick-titles-panel"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
   <h3>Gerer les titres rapides</h3>
   <p style="font-size:12px;color:#888780;margin:0 0 12px;">Ces boutons apparaissent dans le panneau d'ajout d'un evenement, pour remplir le titre en un clic.</p>
   <div id="quick-titles-list"></div>
   <div id="new-quick-title-row" style="display:flex;gap:8px;align-items:center;margin-top:10px;">
     <input type="text" id="new-quick-title-label" placeholder="Nouveau titre rapide" style="flex:1;padding:8px;border-radius:8px;border:1px solid #D3D1C7;">
-    <button id="new-quick-title-add" style="padding:8px 12px;border-radius:8px;border:none;background:#2C2C2A;color:#fff;cursor:pointer;">Ajouter</button>
+    <button id="new-quick-title-add" style="display:flex;align-items:center;gap:4px;padding:8px 12px;border-radius:8px;border:none;background:var(--text);color:#fff;cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>Ajouter</button>
   </div>
 </div>
 
 <div class="sheet" id="list-panel">
-  <button class="close" data-close="list-panel">&times;</button>
+  <button class="close" data-close="list-panel"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
   <h3 id="list-panel-title">Liste chronologique</h3>
   <div id="list-events"></div>
 </div>
 
 <div class="sheet" id="submissions-panel">
-  <button class="close" data-close="submissions-panel">&times;</button>
+  <button class="close" data-close="submissions-panel"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
   <h3>Soumissions a valider</h3>
   <p style="font-size:12px;color:#888780;margin:8px 0;">Lien generique a partager (projet a la charge du partenaire) : <span id="generic-form-link" style="color:#185FA5;word-break:break-all;"></span> <button id="copy-generic-link" type="button" style="border:none;background:none;color:#185FA5;cursor:pointer;font-size:12px;">Copier</button></p>
   <div id="submissions-list"></div>
 </div>
 
 <div class="sheet" id="proposals-panel">
-  <button class="close" data-close="proposals-panel">&times;</button>
+  <button class="close" data-close="proposals-panel"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
   <h3>Propositions envoyees</h3>
   <p style="font-size:12px;color:#888780;margin:8px 0;">Rendez-vous proposes par lien WhatsApp, et leur statut.</p>
   <div id="proposals-list"></div>
 </div>
 
 <div class="sheet" id="share-links-panel">
-  <button class="close" data-close="share-links-panel">&times;</button>
+  <button class="close" data-close="share-links-panel"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>
   <h3>Liens de partage (lecture seule)</h3>
   <p style="font-size:12px;color:#888780;margin:8px 0;">Choisis les projets qu'une personne pourra voir avec ce lien, puis genere-le. Elle ne pourra rien modifier.</p>
   <div id="share-links-list"></div>
@@ -271,11 +393,42 @@
       <input type="checkbox" id="new-share-untagged"> Inclure aussi les evenements sans projet
     </label>
     <p style="font-size:11px;color:#888780;margin:0 0 8px;">Ne coche aucun projet pour partager tout l'agenda.</p>
-    <button type="button" id="new-share-add" style="padding:8px 14px;border-radius:8px;border:none;background:#2C2C2A;color:#fff;cursor:pointer;">Generer le lien</button>
+    <button type="button" id="new-share-add" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:none;background:var(--text);color:#fff;cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07l-1.42 1.42"></path><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07l1.41-1.41"></path></svg>Generer le lien</button>
   </div>
 </div>
 
 <script>
+const ICON_PATHS = {
+  calendar: '<rect x="3" y="4.5" width="18" height="16" rx="2.5"></rect><path d="M8 2.5v4M16 2.5v4M3 9.5h18"></path>',
+  chevronLeft: '<polyline points="14.5 4.5 8 12 14.5 19.5"></polyline>',
+  chevronRight: '<polyline points="9.5 4.5 16 12 9.5 19.5"></polyline>',
+  search: '<circle cx="10.5" cy="10.5" r="6.5"></circle><line x1="20" y1="20" x2="15.3" y2="15.3"></line>',
+  plus: '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>',
+  edit: '<path d="M4 20l1-4.2L15.6 5.2a1.5 1.5 0 0 1 2.1 0l1.1 1.1a1.5 1.5 0 0 1 0 2.1L8.2 19l-4.2 1Z"></path><line x1="14.5" y1="6.3" x2="17.7" y2="9.5"></line>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path>',
+  trash: '<path d="M4 7h16"></path><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path><path d="M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12"></path><line x1="10" y1="10.5" x2="10" y2="16.5"></line><line x1="14" y1="10.5" x2="14" y2="16.5"></line>',
+  share: '<circle cx="18" cy="5" r="2.4"></circle><circle cx="6" cy="12" r="2.4"></circle><circle cx="18" cy="19" r="2.4"></circle><line x1="8.1" y1="10.6" x2="15.9" y2="6.4"></line><line x1="8.1" y1="13.4" x2="15.9" y2="17.6"></line>',
+  close: '<line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line>',
+  sliders: '<line x1="4" y1="6" x2="20" y2="6"></line><circle cx="9" cy="6" r="2"></circle><line x1="4" y1="12" x2="20" y2="12"></line><circle cx="15" cy="12" r="2"></circle><line x1="4" y1="18" x2="20" y2="18"></line><circle cx="7" cy="18" r="2"></circle>',
+  download: '<path d="M12 3v12"></path><polyline points="7 10 12 15 17 10"></polyline><path d="M4 19h16"></path>',
+  link: '<path d="M9.5 14.5l5-5"></path><path d="M7.5 16.5a3.5 3.5 0 0 1-5-4.9l2-2"></path><path d="M16.5 7.5a3.5 3.5 0 0 1 5 4.9l-2 2"></path>',
+  inbox: '<path d="M4 12h4l1.5 3h5L16 12h4"></path><path d="M5.5 5h13l1.5 7v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6l1.5-7Z"></path>',
+  send: '<path d="M4 11l16-7-6.5 16-3-6.5L4 11Z"></path>',
+  eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"></path><circle cx="12" cy="12" r="2.8"></circle>',
+  eyeOff: '<path d="M3 3l18 18"></path><path d="M10.7 5.6c.4 0 .9-.1 1.3-.1 6 0 9.5 6.5 9.5 6.5a14.6 14.6 0 0 1-3.2 4.1M6.6 6.8C4.1 8.5 2.5 12 2.5 12s3.5 6.5 9.5 6.5c1.3 0 2.5-.3 3.6-.7"></path><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"></path>',
+  list: '<line x1="9" y1="6" x2="20" y2="6"></line><line x1="9" y1="12" x2="20" y2="12"></line><line x1="9" y1="18" x2="20" y2="18"></line><circle cx="4.5" cy="6" r="1"></circle><circle cx="4.5" cy="12" r="1"></circle><circle cx="4.5" cy="18" r="1"></circle>',
+  chat: '<circle cx="12" cy="12" r="9"></circle><line x1="8" y1="12" x2="8.01" y2="12"></line><line x1="12" y1="12" x2="12.01" y2="12"></line><line x1="16" y1="12" x2="16.01" y2="12"></line>',
+  sms: '<path d="M5.5 5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h.5v3.2L9.5 16H18a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1Z"></path>',
+  mail: '<rect x="3" y="5.5" width="18" height="13" rx="2"></rect><path d="M4 7l8 6 8-6"></path>',
+  tag: '<path d="M4 4h7l9 9-7 7-9-9V4Z"></path><circle cx="8.5" cy="8.5" r="1.3"></circle>',
+  check: '<polyline points="5 12.5 10 17 19 7"></polyline>',
+};
+function icon(name, size){
+  size = size || 16;
+  const attrs = `width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon"`;
+  return `<svg ${attrs}>${ICON_PATHS[name] || ''}</svg>`;
+}
+
 const START_YEAR = 2026;
 const START_MONTH = 7;
 const MONTH_NAMES = ['Janv','Fevr','Mars','Avr','Mai','Juin','Juil','Aout','Sept','Oct','Nov','Dec'];
@@ -732,7 +885,7 @@ function renderQuickTitlesPanel(){
     row.className = 'proj-row';
     row.innerHTML = `
       <input type="text" value="${t.label.replace(/"/g,'&quot;')}">
-      <button type="button">Supprimer</button>
+      <button type="button" class="danger-btn">${icon('trash',14)}Supprimer</button>
     `;
     const input = row.querySelector('input[type=text]');
     input.addEventListener('blur', async ()=>{
@@ -825,9 +978,9 @@ function renderPanelEvents(){
         ${statusLine}
         <span class="time">${timeLabel}</span>
         <span class="actions">
-          <button class="edit">Modifier</button>
-          <button class="dup">Dupliquer</button>
-          <button class="del">Supprimer</button>
+          <button class="edit">${icon('edit',13)}Modifier</button>
+          <button class="dup">${icon('copy',13)}Dupliquer</button>
+          <button class="del">${icon('trash',13)}Supprimer</button>
         </span>
       </div>
       ${locLine}`;
@@ -892,8 +1045,8 @@ function openEditForm(row, ev, proj){
     </select>
     <select class="e-project"></select>
     <div class="row-buttons">
-      <button class="save">Enregistrer</button>
-      <button class="cancel" type="button">Annuler</button>
+      <button class="save">${icon('check',13)}Enregistrer</button>
+      <button class="cancel" type="button">${icon('close',13)}Annuler</button>
     </div>
   `;
   form.querySelector('.e-status').value = ev.status || '';
@@ -997,12 +1150,12 @@ function renderProjectsPanel(){
     row.innerHTML = `
       <input type="color" value="${p.color}">
       <input type="text" value="${p.name.replace(/"/g,'&quot;')}">
-      <button class="visibility" type="button" title="${p.archived ? 'Masque de la barre du haut - toucher pour reafficher' : 'Visible dans la barre du haut - toucher pour masquer'}" style="color:#5F5E5A;font-size:15px;">
-        <span style="text-decoration:${p.archived ? 'line-through' : 'none'};">&#128065;</span>
+      <button class="visibility" type="button" title="${p.archived ? 'Masque de la barre du haut - toucher pour reafficher' : 'Visible dans la barre du haut - toucher pour masquer'}">
+        ${icon(p.archived ? 'eyeOff' : 'eye', 16)}
       </button>
-      <button class="list" type="button" style="color:#185FA5;">Voir la liste</button>
-      <button class="link" type="button" style="color:#185FA5;">Lien formulaire</button>
-      <button type="button">Supprimer</button>
+      <button class="list" type="button">${icon('list',14)}Voir la liste</button>
+      <button class="link" type="button">${icon('link',14)}Lien formulaire</button>
+      <button type="button" class="danger-btn">${icon('trash',14)}Supprimer</button>
     `;
     const colorInput = row.querySelector('input[type=color]');
     const nameInput = row.querySelector('input[type=text]');
@@ -1074,7 +1227,7 @@ async function renderToolsChips(){
   toggleBtn.type = 'button';
   toggleBtn.className = 'chip';
   const badgeCount = pendingSubmissionsCount + pendingProposalsCount;
-  toggleBtn.textContent = 'Outils' + (badgeCount ? ` (${badgeCount})` : '') + ' ▾';
+  toggleBtn.innerHTML = icon('sliders') + 'Outils' + (badgeCount ? ` (${badgeCount})` : '');
   toggleBtn.addEventListener('click', (e)=>{
     e.stopPropagation();
     const menu = document.getElementById('tools-menu');
@@ -1084,13 +1237,13 @@ async function renderToolsChips(){
 
   const menu = document.createElement('div');
   menu.id = 'tools-menu';
-  menu.style.cssText = 'display:none;position:absolute;top:38px;left:0;background:#fff;border:1px solid #D3D1C7;border-radius:10px;padding:6px;box-shadow:0 4px 16px rgba(0,0,0,0.14);z-index:20;min-width:220px;';
+  menu.className = 'menu-pop';
+  menu.style.cssText = 'top:38px;left:0;min-width:230px;';
 
-  function menuItem(label, onClick){
+  function menuItem(iconName, label, onClick){
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.textContent = label;
-    btn.style.cssText = 'display:block;width:100%;text-align:left;padding:10px 10px;border:none;background:none;border-radius:6px;cursor:pointer;font-size:13px;';
+    btn.innerHTML = icon(iconName) + label;
     btn.addEventListener('click', (e)=>{
       e.stopPropagation();
       menu.style.display = 'none';
@@ -1099,10 +1252,10 @@ async function renderToolsChips(){
     menu.appendChild(btn);
   }
 
-  menuItem('Telecharger en PDF', downloadPdf);
-  menuItem('Liens de partage', openSharePanel);
-  menuItem(pendingSubmissionsCount ? `Soumissions (${pendingSubmissionsCount})` : 'Soumissions', openSubmissionsPanel);
-  menuItem(pendingProposalsCount ? `Propositions (${pendingProposalsCount})` : 'Propositions', openProposalsPanel);
+  menuItem('download', 'Telecharger en PDF', downloadPdf);
+  menuItem('link', 'Liens de partage', openSharePanel);
+  menuItem('inbox', pendingSubmissionsCount ? `Soumissions (${pendingSubmissionsCount})` : 'Soumissions', openSubmissionsPanel);
+  menuItem('send', pendingProposalsCount ? `Propositions (${pendingProposalsCount})` : 'Propositions', openProposalsPanel);
 
   wrap.appendChild(menu);
 }
@@ -1214,8 +1367,8 @@ async function renderSubmissionsPanel(){
         <select class="approve-project"></select>
         <input type="text" class="approve-new-name" placeholder="Ou nouveau nom de projet" style="flex:1;min-width:120px;padding:6px;border-radius:8px;border:1px solid #D3D1C7;">
         <input type="color" class="approve-new-color" value="#7F77DD">
-        <button type="button" class="approve">Accepter</button>
-        <button type="button" class="reject" style="color:#A32D2D;">Refuser</button>
+        <button type="button" class="approve">${icon('check',13)}Accepter</button>
+        <button type="button" class="reject" style="color:var(--danger);">${icon('close',13)}Refuser</button>
       </div>
     `;
     const sel = row.querySelector('.approve-project');
@@ -1291,7 +1444,7 @@ async function renderSharePanel(){
     row.innerHTML = `
       <div class="row-top"><span style="font-weight:500;">Lien complet (tous les projets)</span></div>
       <div style="font-size:12px;color:#888780;margin-top:4px;word-break:break-all;">${legacyUrl}</div>
-      <div style="margin-top:6px;"><button type="button" class="copy" style="border:none;background:none;color:#185FA5;cursor:pointer;font-size:12px;">Copier</button></div>
+      <div style="margin-top:6px;"><button type="button" class="copy" style="border:none;background:none;display:inline-flex;align-items:center;gap:4px;color:var(--accent);cursor:pointer;font-size:12px;">${icon('copy',13)}Copier</button></div>
     `;
     row.querySelector('.copy').addEventListener('click', ()=>{
       navigator.clipboard?.writeText(legacyUrl);
@@ -1312,8 +1465,8 @@ async function renderSharePanel(){
       <div style="font-size:12px;color:#888780;margin-top:4px;">${names}${entry.includeUntagged ? ' + sans projet' : ''}</div>
       <div style="font-size:12px;color:#888780;margin-top:2px;word-break:break-all;">${url}</div>
       <div style="margin-top:6px;display:flex;gap:10px;">
-        <button type="button" class="copy" style="border:none;background:none;color:#185FA5;cursor:pointer;font-size:12px;">Copier</button>
-        <button type="button" class="del" style="border:none;background:none;color:#A32D2D;cursor:pointer;font-size:12px;">Supprimer</button>
+        <button type="button" class="copy" style="border:none;background:none;display:inline-flex;align-items:center;gap:4px;color:var(--accent);cursor:pointer;font-size:12px;">${icon('copy',13)}Copier</button>
+        <button type="button" class="del" style="border:none;background:none;display:inline-flex;align-items:center;gap:4px;color:var(--danger);cursor:pointer;font-size:12px;">${icon('trash',13)}Supprimer</button>
       </div>
     `;
     row.querySelector('.copy').addEventListener('click', ()=>{
@@ -1389,8 +1542,8 @@ async function renderProposalsPanel(){
         ${prop.projectName ? 'Projet : '+prop.projectName+' - ' : ''}${prop.location ? 'Lieu : '+prop.location+' - ' : ''}${propUrl}
       </div>
       <div style="margin-top:6px;display:flex;gap:10px;">
-        <button type="button" class="copy" style="border:none;background:none;color:#185FA5;cursor:pointer;font-size:12px;">Copier le lien</button>
-        <button type="button" class="del" style="border:none;background:none;color:#A32D2D;cursor:pointer;font-size:12px;">Supprimer</button>
+        <button type="button" class="copy" style="border:none;background:none;display:inline-flex;align-items:center;gap:4px;color:var(--accent);cursor:pointer;font-size:12px;">${icon('copy',13)}Copier le lien</button>
+        <button type="button" class="del" style="border:none;background:none;display:inline-flex;align-items:center;gap:4px;color:var(--danger);cursor:pointer;font-size:12px;">${icon('trash',13)}Supprimer</button>
       </div>
     `;
     row.querySelector('.copy').addEventListener('click', ()=>{
@@ -1483,11 +1636,10 @@ document.getElementById('share-proposal-btn').addEventListener('click', (e)=>{
   const menu = document.getElementById('share-proposal-menu');
   if(menu.style.display === 'block'){ menu.style.display = 'none'; return; }
   menu.innerHTML = '';
-  [['WhatsApp','whatsapp'], ['Texto (SMS)','sms'], ['Email','email']].forEach(([label, channel])=>{
+  [['WhatsApp','whatsapp','chat'], ['Texto (SMS)','sms','sms'], ['Email','email','mail']].forEach(([label, channel, iconName])=>{
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.textContent = label;
-    btn.style.cssText = 'display:block;width:100%;text-align:left;padding:10px 10px;border:none;background:none;border-radius:6px;cursor:pointer;font-size:13px;';
+    btn.innerHTML = icon(iconName) + label;
     btn.addEventListener('click', (ev)=>{
       ev.stopPropagation();
       menu.style.display = 'none';
