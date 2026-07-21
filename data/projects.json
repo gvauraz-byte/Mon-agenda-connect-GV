@@ -2,7 +2,8 @@
   {
     "id": "client-a",
     "name": "la vie devant soi",
-    "color": "#378add"
+    "color": "#378add",
+    "archived": true
   },
   {
     "id": "perso",
