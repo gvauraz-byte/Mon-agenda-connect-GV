@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { fetchEvents, createEvent, updateEvent, deleteEvent, listCalendars } from './lib/caldav.js';
 import { loadProjects, saveProjects, slugify } from './lib/projects.js';
@@ -102,6 +103,9 @@ app.get('/api/projects', async (req, res) => {
     const scope = await resolveViewScope(req.query.viewToken);
     if (scope) {
       list = list.filter((p) => scope.projectIds.includes(p.id));
+    } else if (req.query.viewToken) {
+      // Lien complet (legacy) : on cache quand meme les projets archives aux visiteurs externes.
+      list = list.filter((p) => !p.archived);
     }
     res.json(list);
   } catch (err) {
@@ -127,12 +131,13 @@ app.post('/api/projects', async (req, res) => {
 
 app.put('/api/projects/:id', async (req, res) => {
   try {
-    const { name, color } = req.body;
+    const { name, color, archived } = req.body;
     const list = await loadProjects();
     const project = list.find((p) => p.id === req.params.id);
     if (!project) return res.status(404).json({ error: 'projet introuvable' });
     if (name) project.name = name;
     if (color) project.color = color;
+    if (typeof archived === 'boolean') project.archived = archived;
     await saveProjects(list);
     res.json(list);
   } catch (err) {
@@ -166,6 +171,14 @@ app.get('/api/events', async (req, res) => {
         const cats = (ev.categories || []).map((c) => c.toLowerCase());
         if (!cats.length) return scope.includeUntagged;
         return cats.some((c) => allowedNames.has(c));
+      });
+    } else if (viewToken) {
+      // Lien complet (legacy) : on cache quand meme les evenements des projets archives.
+      const projects = await loadProjects();
+      const archivedNames = new Set(projects.filter((p) => p.archived).map((p) => p.name.toLowerCase()));
+      events = events.filter((ev) => {
+        const cats = (ev.categories || []).map((c) => c.toLowerCase());
+        return !cats.some((c) => archivedNames.has(c));
       });
     }
     res.json(events);
@@ -362,9 +375,41 @@ app.post('/api/proposals', async (req, res) => {
       calendarUrl: calendarUrl || '',
       contactLabel: contactLabel || '',
     });
-    res.json({ ok: true, id: entry.id, path: `/proposition.html?id=${entry.id}` });
+    res.json({ ok: true, id: entry.id, path: `/p/${entry.id}` });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+function escapeAttr(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// Lien court a partager (WhatsApp/SMS/email) : sert la page de proposition avec des balises
+// Open Graph remplies avec le vrai titre/date, pour un aperçu de lien plus soigne dans les
+// messageries qui generent une carte de previsualisation.
+app.get('/p/:id', async (req, res) => {
+  try {
+    const prop = await findProposal(req.params.id);
+    const filePath = path.join(__dirname, 'public', 'proposition.html');
+    let html = fs.readFileSync(filePath, 'utf-8');
+    if (prop && prop.status === 'pending') {
+      const dateLabel = prop.allDay
+        ? prop.start.slice(0, 10)
+        : `${prop.start.slice(0, 10)} a ${new Date(prop.start).toISOString().slice(11, 16)}`;
+      const desc = `${dateLabel}${prop.location ? ' - ' + prop.location : ''} - Touchez pour confirmer.`;
+      html = html
+        .replace(/<meta property="og:title" content="[^"]*">/, `<meta property="og:title" content="${escapeAttr(prop.title)}">`)
+        .replace(/<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${escapeAttr(desc)}">`);
+    }
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (err) {
+    res.redirect('/proposition.html?id=' + encodeURIComponent(req.params.id));
   }
 });
 

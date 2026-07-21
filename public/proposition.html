@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Proposition de rendez-vous</title>
+<meta property="og:title" content="Proposition de rendez-vous">
+<meta property="og:description" content="Un rendez-vous vous est propose. Touchez pour voir les details et repondre.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
 <style>
   * { box-sizing: border-box; }
   body {
@@ -50,7 +54,11 @@
 
 <script>
 const params = new URLSearchParams(window.location.search);
-const id = params.get('id');
+let id = params.get('id');
+if(!id){
+  const m = window.location.pathname.match(/\/p\/([^/]+)/);
+  if(m) id = m[1];
+}
 
 function pad(n){ return String(n).padStart(2,'0'); }
 function fmtDate(dateStr){

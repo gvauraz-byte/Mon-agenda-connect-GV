@@ -205,10 +205,11 @@
     <button type="submit">Ajouter</button>
   </form>
   <div style="margin-top:10px;padding-top:10px;border-top:1px solid #F1EFE8;">
-    <p style="font-size:12px;color:#888780;margin:0 0 6px;">Ou propose ce rendez-vous par lien (a envoyer sur WhatsApp) : il ne sera ajoute a ton agenda que si la personne l'accepte.</p>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-      <input type="text" id="new-whatsapp-phone" placeholder="Numero WhatsApp (optionnel)" style="flex:1;min-width:160px;padding:8px;border-radius:8px;border:1px solid #D3D1C7;">
-      <button type="button" id="propose-whatsapp-btn" style="padding:8px 12px;border-radius:8px;border:1px solid #185FA5;background:#fff;color:#185FA5;cursor:pointer;">Proposer par WhatsApp</button>
+    <p style="font-size:12px;color:#888780;margin:0 0 6px;">Ou propose ce rendez-vous par lien : il ne sera ajoute a ton agenda que si la personne l'accepte.</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;position:relative;">
+      <input type="text" id="new-share-contact" placeholder="Contact : tel ou email (optionnel)" style="flex:1;min-width:160px;padding:8px;border-radius:8px;border:1px solid #D3D1C7;">
+      <button type="button" id="share-proposal-btn" style="padding:8px 12px;border-radius:8px;border:1px solid #185FA5;background:#fff;color:#185FA5;cursor:pointer;">Partager ▾</button>
+      <div id="share-proposal-menu" style="display:none;position:absolute;top:42px;right:0;background:#fff;border:1px solid #D3D1C7;border-radius:10px;padding:6px;box-shadow:0 4px 16px rgba(0,0,0,0.14);z-index:20;min-width:180px;"></div>
     </div>
   </div>
 </div>
@@ -371,7 +372,7 @@ async function loadCalendars(){
 
 async function loadProjects(){
   projects = await api('/api/projects');
-  activeProjects = new Set(projects.map(p=>p.id));
+  activeProjects = new Set(projects.filter(p=>!p.archived).map(p=>p.id));
   renderProjectChips();
   renderProjectSelect();
   renderProjectsPanel();
@@ -380,7 +381,7 @@ async function loadProjects(){
 function renderProjectChips(){
   const wrap = document.getElementById('project-chips');
   wrap.innerHTML = '';
-  projects.forEach(p=>{
+  projects.filter(p=>!p.archived).forEach(p=>{
     const chip = document.createElement('button');
     chip.type = 'button';
     chip.className = 'chip' + (activeProjects.has(p.id) ? '' : ' off');
@@ -418,7 +419,7 @@ function renderProjectSelect(){
   projects.forEach(p=>{
     const opt = document.createElement('option');
     opt.value = p.id;
-    opt.textContent = p.name;
+    opt.textContent = p.name + (p.archived ? ' (archive)' : '');
     sel.appendChild(opt);
   });
 }
@@ -900,7 +901,7 @@ function openEditForm(row, ev, proj){
   sel.innerHTML = '<option value="">Sans projet</option>';
   projects.forEach(p=>{
     const opt = document.createElement('option');
-    opt.value = p.id; opt.textContent = p.name;
+    opt.value = p.id; opt.textContent = p.name + (p.archived ? ' (archive)' : '');
     if(proj && proj.id === p.id) opt.selected = true;
     sel.appendChild(opt);
   });
@@ -992,9 +993,13 @@ function renderProjectsPanel(){
   projects.forEach(p=>{
     const row = document.createElement('div');
     row.className = 'proj-row';
+    if(p.archived) row.style.opacity = '0.5';
     row.innerHTML = `
       <input type="color" value="${p.color}">
       <input type="text" value="${p.name.replace(/"/g,'&quot;')}">
+      <button class="visibility" type="button" title="${p.archived ? 'Masque de la barre du haut - toucher pour reafficher' : 'Visible dans la barre du haut - toucher pour masquer'}" style="color:#5F5E5A;font-size:15px;">
+        <span style="text-decoration:${p.archived ? 'line-through' : 'none'};">&#128065;</span>
+      </button>
       <button class="list" type="button" style="color:#185FA5;">Voir la liste</button>
       <button class="link" type="button" style="color:#185FA5;">Lien formulaire</button>
       <button type="button">Supprimer</button>
@@ -1008,6 +1013,11 @@ function renderProjectsPanel(){
     }
     colorInput.addEventListener('change', save);
     nameInput.addEventListener('blur', save);
+    row.querySelector('.visibility').addEventListener('click', async ()=>{
+      await api('/api/projects/'+p.id, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({archived: !p.archived})});
+      await loadProjects();
+      renderCalendar();
+    });
     row.querySelector('.list').addEventListener('click', ()=>{
       openListPanel(p.id);
     });
@@ -1037,47 +1047,64 @@ document.getElementById('new-project-add').addEventListener('click', async ()=>{
 
 let pendingSubmissionsCount = 0;
 
+function downloadPdf(){
+  const params = new URLSearchParams({
+    year: periodYear,
+    projects: [...activeProjects].join(','),
+    untagged: showUntagged ? '1' : '0',
+    holidays: showHolidays ? '1' : '0',
+    vacations: showVacations ? '1' : '0',
+    zone: vacationZone,
+  });
+  window.open('/api/export/pdf?'+params.toString(), '_blank');
+}
+
+function closeToolsMenu(){
+  const m = document.getElementById('tools-menu');
+  if(m) m.style.display = 'none';
+}
+document.addEventListener('click', closeToolsMenu);
+
 async function renderToolsChips(){
   const wrap = document.getElementById('tools-chips');
   wrap.innerHTML = '';
+  wrap.style.position = 'relative';
 
-  const pdfChip = document.createElement('button');
-  pdfChip.type = 'button';
-  pdfChip.className = 'chip';
-  pdfChip.textContent = 'Telecharger en PDF';
-  pdfChip.addEventListener('click', ()=>{
-    const params = new URLSearchParams({
-      year: periodYear,
-      projects: [...activeProjects].join(','),
-      untagged: showUntagged ? '1' : '0',
-      holidays: showHolidays ? '1' : '0',
-      vacations: showVacations ? '1' : '0',
-      zone: vacationZone,
-    });
-    window.open('/api/export/pdf?'+params.toString(), '_blank');
+  const toggleBtn = document.createElement('button');
+  toggleBtn.type = 'button';
+  toggleBtn.className = 'chip';
+  const badgeCount = pendingSubmissionsCount + pendingProposalsCount;
+  toggleBtn.textContent = 'Outils' + (badgeCount ? ` (${badgeCount})` : '') + ' ▾';
+  toggleBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const menu = document.getElementById('tools-menu');
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
   });
-  wrap.appendChild(pdfChip);
+  wrap.appendChild(toggleBtn);
 
-  const shareChip = document.createElement('button');
-  shareChip.type = 'button';
-  shareChip.className = 'chip';
-  shareChip.textContent = 'Liens de partage';
-  shareChip.addEventListener('click', openSharePanel);
-  wrap.appendChild(shareChip);
+  const menu = document.createElement('div');
+  menu.id = 'tools-menu';
+  menu.style.cssText = 'display:none;position:absolute;top:38px;left:0;background:#fff;border:1px solid #D3D1C7;border-radius:10px;padding:6px;box-shadow:0 4px 16px rgba(0,0,0,0.14);z-index:20;min-width:220px;';
 
-  const subChip = document.createElement('button');
-  subChip.type = 'button';
-  subChip.className = 'chip';
-  subChip.textContent = pendingSubmissionsCount ? `Soumissions (${pendingSubmissionsCount})` : 'Soumissions';
-  subChip.addEventListener('click', openSubmissionsPanel);
-  wrap.appendChild(subChip);
+  function menuItem(label, onClick){
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = label;
+    btn.style.cssText = 'display:block;width:100%;text-align:left;padding:10px 10px;border:none;background:none;border-radius:6px;cursor:pointer;font-size:13px;';
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      menu.style.display = 'none';
+      onClick();
+    });
+    menu.appendChild(btn);
+  }
 
-  const propChip = document.createElement('button');
-  propChip.type = 'button';
-  propChip.className = 'chip';
-  propChip.textContent = pendingProposalsCount ? `Propositions (${pendingProposalsCount})` : 'Propositions';
-  propChip.addEventListener('click', openProposalsPanel);
-  wrap.appendChild(propChip);
+  menuItem('Telecharger en PDF', downloadPdf);
+  menuItem('Liens de partage', openSharePanel);
+  menuItem(pendingSubmissionsCount ? `Soumissions (${pendingSubmissionsCount})` : 'Soumissions', openSubmissionsPanel);
+  menuItem(pendingProposalsCount ? `Propositions (${pendingProposalsCount})` : 'Propositions', openProposalsPanel);
+
+  wrap.appendChild(menu);
 }
 
 async function refreshSubmissionsCount(){
@@ -1349,7 +1376,7 @@ async function renderProposalsPanel(){
     const dateLabel = prop.allDay
       ? `${prop.start}${prop.end && prop.end!==prop.start ? ' au '+prop.end : ''}`
       : `${prop.start.slice(0,10)} ${timeOf(prop.start)}`;
-    const propUrl = `${window.location.origin}/proposition.html?id=${prop.id}`;
+    const propUrl = `${window.location.origin}/p/${prop.id}`;
     const row = document.createElement('div');
     row.className = 'ev-row';
     row.innerHTML = `
@@ -1379,14 +1406,13 @@ async function renderProposalsPanel(){
   });
 }
 
-document.getElementById('propose-whatsapp-btn').addEventListener('click', async ()=>{
+async function createShareableProposal(){
   const title = document.getElementById('new-title').value.trim();
   const projectId = document.getElementById('new-project').value;
   const calendarUrl = document.getElementById('new-calendar').value;
   const allDay = document.getElementById('new-allday').checked;
   const location = document.getElementById('new-location').value.trim();
-  const phone = document.getElementById('new-whatsapp-phone').value.trim();
-  if(!title || !currentPanelDate){ alert('Ajoute au moins un titre.'); return; }
+  if(!title || !currentPanelDate){ alert('Ajoute au moins un titre.'); return null; }
   let start, end;
   if(allDay){
     start = currentPanelDate;
@@ -1407,17 +1433,69 @@ document.getElementById('propose-whatsapp-btn').addEventListener('click', async 
     });
   } catch(e){
     alert('Erreur lors de la creation de la proposition.');
-    return;
+    return null;
   }
   const link = window.location.origin + result.path;
-  const dateHuman = allDay ? currentPanelDate : `${currentPanelDate} ${document.getElementById('new-start-time').value||''}`;
-  const message = `Bonjour ! Je te propose un rendez-vous : "${title}" le ${dateHuman}${location ? ' a '+location : ''}. Peux-tu confirmer ici : ${link}`;
-  const digits = phone.replace(/[^0-9]/g,'');
-  const waUrl = `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
-  window.open(waUrl, '_blank');
-  document.getElementById('new-whatsapp-phone').value = '';
+  const dateHuman = allDay ? currentPanelDate : `${currentPanelDate} a ${document.getElementById('new-start-time').value||''}`;
+  const lines = ['Je te propose un rendez-vous :', '', title, `Quand : ${dateHuman}`];
+  if(location) lines.push(`Lieu : ${location}`);
+  lines.push('', `Confirme en un clic : ${link}`);
+  const message = lines.join('\n');
+
   await refreshProposalsCount();
   renderToolsChips();
+  return { link, message, title };
+}
+
+function shareContactDigits(){
+  return document.getElementById('new-share-contact').value.trim().replace(/[^0-9]/g,'');
+}
+function shareContactValue(){
+  return document.getElementById('new-share-contact').value.trim();
+}
+
+async function shareProposalVia(channel){
+  const share = await createShareableProposal();
+  if(!share) return;
+  if(channel === 'whatsapp'){
+    const digits = shareContactDigits();
+    window.open(`https://wa.me/${digits}?text=${encodeURIComponent(share.message)}`, '_blank');
+  } else if(channel === 'sms'){
+    const digits = shareContactDigits();
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    window.location.href = `sms:${digits}${isIOS ? '&' : '?'}body=${encodeURIComponent(share.message)}`;
+  } else if(channel === 'email'){
+    const contact = shareContactValue();
+    const to = contact.includes('@') ? contact : '';
+    window.location.href = `mailto:${to}?subject=${encodeURIComponent('Proposition de rendez-vous')}&body=${encodeURIComponent(share.message)}`;
+  }
+  document.getElementById('new-share-contact').value = '';
+}
+
+function closeShareProposalMenu(){
+  const m = document.getElementById('share-proposal-menu');
+  if(m) m.style.display = 'none';
+}
+document.addEventListener('click', closeShareProposalMenu);
+
+document.getElementById('share-proposal-btn').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  const menu = document.getElementById('share-proposal-menu');
+  if(menu.style.display === 'block'){ menu.style.display = 'none'; return; }
+  menu.innerHTML = '';
+  [['WhatsApp','whatsapp'], ['Texto (SMS)','sms'], ['Email','email']].forEach(([label, channel])=>{
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = label;
+    btn.style.cssText = 'display:block;width:100%;text-align:left;padding:10px 10px;border:none;background:none;border-radius:6px;cursor:pointer;font-size:13px;';
+    btn.addEventListener('click', (ev)=>{
+      ev.stopPropagation();
+      menu.style.display = 'none';
+      shareProposalVia(channel);
+    });
+    menu.appendChild(btn);
+  });
+  menu.style.display = 'block';
 });
 
 async function runSearch(){
