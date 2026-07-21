@@ -8,7 +8,7 @@
     "id": "perso",
     "name": "Perso",
     "color": "#1d9e75",
-    "archived": false
+    "archived": true
   },
   {
     "id": "admin",
