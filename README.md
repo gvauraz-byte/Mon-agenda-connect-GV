@@ -57,10 +57,12 @@ Une fois configure, l'app ecrit directement tes projets, soumissions, liens de p
 
 A savoir : le rattachement d'un evenement a un projet (le "tag" que tu vois sur chaque evenement colore) n'est jamais concerne par ce risque, meme sans configurer GitHub — cette information est ecrite directement dans l'evenement lui-meme sur iCloud (le champ "categories"), pas sur le serveur Render, donc elle est deja permanente. Seuls le nom et la couleur de tes projets, plus les soumissions partenaires en attente, beneficient de cette configuration GitHub.
 
-## Etape 4 - Ouvrir sur iPhone
+## Etape 4 - Installer sur ton telephone
 
-1. Ouvre l'URL Render dans Safari sur ton iPhone.
-2. Appuie sur l'icone de partage, puis "Sur l'ecran d'accueil". L'appli s'ouvre alors comme une vraie application.
+1. Ouvre l'URL Render dans Safari (iPhone) ou Chrome (Android).
+2. Sur iPhone : appuie sur l'icone de partage, puis "Sur l'ecran d'accueil". Sur Android : "Ajouter a l'ecran d'accueil" ou "Installer l'application".
+
+L'appli s'ouvre alors comme une vraie application (icone dediee, plein ecran), et peut meme continuer a fonctionner sans connexion — voir la section "Mode hors-ligne" plus bas.
 
 ## Utilisation
 
@@ -140,6 +142,25 @@ C'est tout : chaque lundi matin, GitHub reveille ton app (le plan gratuit de Ren
 
 A savoir : les taches planifiees GitHub ne sont pas garanties a la minute pres (quelques minutes de retard sont frequentes, plus en cas de forte charge chez GitHub), et sont automatiquement desactivees si le depot reste plus de 60 jours sans aucune modification (il suffit alors de les reactiver depuis l'onglet Actions). Rien de grave pour un usage comme celui-ci, mais je prefere te le signaler.
 
+## Nouveau : installation en app + mode hors-ligne
+
+L'agenda peut maintenant s'installer comme une vraie application sur ton telephone (icone sur l'ecran d'accueil, plein ecran, pas de barre d'adresse) et continuer a fonctionner sans connexion internet.
+
+**Installer l'app :**
+- **iPhone (Safari)** : ouvre l'URL Render, appuie sur l'icone de partage puis "Sur l'ecran d'accueil".
+- **Android (Chrome)** : ouvre l'URL Render, Chrome propose generalement automatiquement "Ajouter a l'ecran d'accueil" (sinon menu ⋮ > "Installer l'application").
+
+**Ce qui marche hors-ligne :**
+- Consulter l'agenda deja charge (les annees que tu as deja affichees pendant que tu etais connecte restent disponibles).
+- Creer, modifier, dupliquer et supprimer des evenements : tes changements s'affichent tout de suite a l'ecran et sont automatiquement envoyes vers iCloud des que la connexion revient (Wi-Fi ou 4G/5G). Un badge en haut a gauche de l'agenda t'indique l'etat : rien = tout est synchronise, une pastille orange "en attente" = des changements n'ont pas encore ete envoyes, "hors-ligne" = pas de reseau du tout pour le moment. Tu peux toucher ce badge pour forcer une nouvelle tentative d'envoi.
+- Un petit repere apparait a cote d'un evenement pas encore synchronise, pour que tu saches qu'il n'est pas encore confirme sur iCloud.
+
+**Important a savoir :**
+- Pour que le mode hors-ligne fonctionne, il faut avoir ouvert l'app au moins une fois avec une connexion, pour que ton telephone garde une copie recente de tes projets et de tes evenements. Sans ce premier chargement en ligne, l'app ne pourra rien afficher hors-ligne.
+- La synchronisation avec iCloud necessite toujours une connexion a un moment donne (Apple ne permet pas de synchroniser sans reseau) — le mode hors-ligne te permet de travailler pendant la coupure, pas de synchroniser sans jamais te reconnecter.
+- Si un changement fait hors-ligne ne peut vraiment pas s'appliquer une fois reconnecte (par exemple si l'evenement a ete modifie ailleurs entre-temps), l'app te previent avec un message listant les evenements concernes, pour que tu verifies manuellement.
+- La recherche, la gestion des projets/titres rapides, les liens de partage et les propositions WhatsApp necessitent une connexion active (seuls les evenements du calendrier fonctionnent hors-ligne pour le moment).
+
 ## Mettre a jour l'appli apres une modification
 
 Comme le depot n'est pas connecte a Git en ligne de commande, la facon la plus simple de mettre a jour ton app est :
@@ -160,5 +181,6 @@ Comme le depot n'est pas connecte a Git en ligne de commande, la facon la plus s
 - Les vacances scolaires sont basees sur les dates officielles publiees pour les annees 2025-2026 et 2026-2027 ; au-dela, l'appli n'affichera rien tant que les dates ne seront pas ajoutees dans `lib/holidays.js`.
 - L'app principale (edition) reste sans mot de passe, comme tu l'as choisi ; les liens de partage, les liens de proposition WhatsApp et le formulaire partenaire sont proteges uniquement par le fait que leurs adresses ne sont pas devinables (une fois qu'un lien est genere, quiconque le possede peut l'utiliser — supprime-le dans l'app si tu veux le desactiver).
 - "Proposer par WhatsApp" utilise le lien public `wa.me` de WhatsApp (pas l'API WhatsApp Business, qui demande une validation Meta et n'est pas gratuite) : c'est donc toujours toi qui appuies sur "Envoyer" dans WhatsApp apres que le lien s'ouvre, l'app ne peut pas l'envoyer automatiquement sans cette action.
+- Le mode hors-ligne ne couvre que les evenements du calendrier (creer/modifier/dupliquer/supprimer) ; il faut une connexion pour la recherche, la gestion des projets/titres rapides, les liens de partage et les propositions WhatsApp. Il faut aussi avoir ouvert l'app au moins une fois en ligne pour que les donnees soient disponibles hors-ligne ensuite.
 
 Dis-moi ce que tu veux ameliorer ensuite.

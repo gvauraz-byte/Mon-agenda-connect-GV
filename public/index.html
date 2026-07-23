@@ -6,6 +6,12 @@
 <title>Agenda projets</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Agenda">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1D5FA8">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" href="/icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
@@ -86,6 +92,15 @@
   .period-nav button:active:not(:disabled) { transform: scale(0.94); }
   .period-nav button:disabled { opacity: 0.3; cursor: default; }
   .period-label { font-size: 14px; font-weight: 500; min-width: 170px; text-align: center; }
+  #sync-status-btn {
+    width: auto !important; padding: 0 10px; gap: 5px; font-size: 11px; font-weight: 500;
+    white-space: nowrap;
+  }
+  #sync-status-btn.state-offline { background: var(--bg); border-color: var(--border-strong); color: var(--text-muted); }
+  #sync-status-btn.state-pending { background: #FBF3E0; border-color: #E4C87A; color: #8A6A1E; }
+  #sync-status-btn.state-pending svg { animation: spin-slow 3s linear infinite; }
+  #sync-status-btn.state-synced { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
   #search-row { display: flex; gap: 8px; margin-bottom: 10px; }
   #search-row input {
@@ -275,6 +290,7 @@
 <header>
   <h1><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon"><rect x="3" y="4.5" width="18" height="16" rx="2.5"></rect><path d="M8 2.5v4M16 2.5v4M3 9.5h18"></path></svg>Agenda projets</h1>
   <div class="period-nav">
+    <button id="sync-status-btn" type="button" title="Etat de synchronisation" style="display:none;"></button>
     <button id="prev-btn" aria-label="Periode precedente"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><polyline points="14.5 4.5 8 12 14.5 19.5"></polyline></svg></button>
     <span class="period-label" id="period-label"></span>
     <button id="next-btn" aria-label="Periode suivante"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><polyline points="9.5 4.5 16 12 9.5 19.5"></polyline></svg></button>
@@ -422,11 +438,197 @@ const ICON_PATHS = {
   mail: '<rect x="3" y="5.5" width="18" height="13" rx="2"></rect><path d="M4 7l8 6 8-6"></path>',
   tag: '<path d="M4 4h7l9 9-7 7-9-9V4Z"></path><circle cx="8.5" cy="8.5" r="1.3"></circle>',
   check: '<polyline points="5 12.5 10 17 19 7"></polyline>',
+  cloud: '<path d="M7 18a4.5 4.5 0 0 1-.5-8.97A5.5 5.5 0 0 1 17.2 8.1 4 4 0 0 1 17 18H7Z"></path>',
+  cloudOff: '<path d="M3 3l18 18"></path><path d="M9.5 4.6A5.5 5.5 0 0 1 17.2 8.1 4 4 0 0 1 17 18H9.5"></path><path d="M6.5 9.1A4.5 4.5 0 0 0 7 18h6.5"></path>',
+  refreshCw: '<path d="M20 11a8 8 0 0 0-14.6-4.6M4 4v5h5"></path><path d="M4 13a8 8 0 0 0 14.6 4.6M20 20v-5h-5"></path>',
 };
 function icon(name, size){
   size = size || 16;
   const attrs = `width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon"`;
   return `<svg ${attrs}>${ICON_PATHS[name] || ''}</svg>`;
+}
+
+// ---------------------------------------------------------------------------
+// Mode hors-ligne : quand on cree/modifie/supprime un evenement sans reseau,
+// l'action est mise en file d'attente (localStorage) et rejouee des que la
+// connexion revient. La lecture (consultation) fonctionne hors-ligne grace
+// au service worker qui garde une copie des dernieres reponses de l'API.
+// ---------------------------------------------------------------------------
+const OFFLINE_QUEUE_KEY = 'agenda_offline_queue_v1';
+let offlineFlushInFlight = false;
+
+function isNetworkError(err){
+  return err instanceof TypeError;
+}
+function loadOfflineQueue(){
+  try{ return JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]'); } catch(e){ return []; }
+}
+function saveOfflineQueue(q){
+  try{ localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(q)); } catch(e){}
+  updateSyncStatus();
+}
+function makeLocalId(){
+  return 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
+}
+
+// Cree un evenement "optimiste" : si le reseau echoue, on le met en file et
+// on renvoie tout de suite un objet local qui s'affiche comme les autres.
+async function apiCreateEvent(payload, projectName){
+  try{
+    return await api('/api/events', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  } catch(err){
+    if(!isNetworkError(err)) throw err;
+    const localId = makeLocalId();
+    const queue = loadOfflineQueue();
+    queue.push({ qid: localId, type: 'create', localId, payload, title: payload.title });
+    saveOfflineQueue(queue);
+    return { offline: true, localId };
+  }
+}
+
+async function apiUpdateEvent(ev, payload){
+  if(ev._offline && ev._localId){
+    // L'evenement n'a jamais atteint le serveur : on modifie directement
+    // la demande de creation encore en file, pas besoin d'une 2e action.
+    const queue = loadOfflineQueue();
+    const item = queue.find(q=> q.type==='create' && q.localId === ev._localId);
+    if(item){ item.payload = { ...item.payload, ...payload }; item.title = payload.title; }
+    saveOfflineQueue(queue);
+    return { offline: true, localId: ev._localId };
+  }
+  try{
+    return await api('/api/events', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  } catch(err){
+    if(!isNetworkError(err)) throw err;
+    const queue = loadOfflineQueue();
+    queue.push({ qid: makeLocalId(), type: 'update', targetUrl: ev.url, payload, title: payload.title });
+    saveOfflineQueue(queue);
+    return { offline: true };
+  }
+}
+
+async function apiDeleteEvent(ev){
+  if(ev._offline && ev._localId){
+    // Annule simplement la creation encore en attente.
+    let queue = loadOfflineQueue();
+    queue = queue.filter(q=> q.localId !== ev._localId);
+    saveOfflineQueue(queue);
+    return { offline: true };
+  }
+  try{
+    return await api('/api/events', { method: 'DELETE', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ url: ev.url, etag: ev.etag }) });
+  } catch(err){
+    if(!isNetworkError(err)) throw err;
+    const queue = loadOfflineQueue();
+    queue.push({ qid: makeLocalId(), type: 'delete', targetUrl: ev.url, payload: { url: ev.url, etag: ev.etag }, title: ev.title });
+    saveOfflineQueue(queue);
+    return { offline: true };
+  }
+}
+
+// Applique la file d'attente par-dessus les evenements charges du serveur/cache,
+// pour que l'ecran reflete tout de suite les changements faits hors-ligne.
+function applyOfflineQueueToEvents(events, start, end){
+  const queue = loadOfflineQueue();
+  if(!queue.length) return events;
+  let list = events.slice();
+  queue.forEach(item=>{
+    if(item.type === 'update'){
+      list = list.map(ev=>{
+        if(ev.url !== item.targetUrl) return ev;
+        const proj = projects.find(p=>p.id === item.payload.projectId);
+        return { ...ev, title: item.payload.title, start: item.payload.start, end: item.payload.end,
+          allDay: item.payload.allDay, location: item.payload.location, status: item.payload.status,
+          categories: proj ? [proj.name] : [], _offlinePending: true };
+      });
+    } else if(item.type === 'delete'){
+      list = list.filter(ev=> ev.url !== item.targetUrl);
+    }
+  });
+  queue.forEach(item=>{
+    if(item.type !== 'create') return;
+    const p = item.payload;
+    if(p.start < start || p.start >= end) return;
+    const proj = projects.find(pr=>pr.id === p.projectId);
+    list.push({
+      title: p.title, start: p.start, end: p.end, allDay: p.allDay,
+      location: p.location, status: p.status,
+      categories: proj ? [proj.name] : [],
+      url: 'local:' + item.localId, etag: null, uid: 'local:' + item.localId,
+      _offline: true, _localId: item.localId,
+    });
+  });
+  return list;
+}
+
+async function flushOfflineQueue(){
+  if(offlineFlushInFlight) return;
+  if(!navigator.onLine) { updateSyncStatus(); return; }
+  const queue = loadOfflineQueue();
+  if(!queue.length){ updateSyncStatus(); return; }
+  offlineFlushInFlight = true;
+  const failedTitles = [];
+  let remaining = queue.slice();
+  for(let i=0;i<queue.length;i++){
+    const item = queue[i];
+    try{
+      if(item.type === 'create'){
+        await api('/api/events', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(item.payload) });
+      } else if(item.type === 'update'){
+        await api('/api/events', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(item.payload) });
+      } else if(item.type === 'delete'){
+        await api('/api/events', { method: 'DELETE', headers: {'Content-Type':'application/json'}, body: JSON.stringify(item.payload) });
+      }
+      remaining = remaining.filter(q=> q.qid !== item.qid);
+    } catch(err){
+      if(isNetworkError(err)){
+        break; // reseau reparti, on reessaiera au prochain passage
+      } else {
+        failedTitles.push(item.title || 'evenement');
+        remaining = remaining.filter(q=> q.qid !== item.qid);
+      }
+    }
+  }
+  saveOfflineQueue(remaining);
+  offlineFlushInFlight = false;
+  if(failedTitles.length){
+    alert('Certaines modifications faites hors-ligne n\'ont pas pu etre appliquees :\n- ' + failedTitles.join('\n- ') + '\n\nVerifie ces evenements dans l\'agenda.');
+  }
+  await loadEvents();
+  renderCalendar();
+  if(currentPanelDate) renderPanelEvents();
+}
+
+function updateSyncStatus(){
+  const btn = document.getElementById('sync-status-btn');
+  if(!btn) return;
+  const pending = loadOfflineQueue().length;
+  btn.classList.remove('state-offline','state-pending','state-synced');
+  if(!navigator.onLine){
+    btn.style.display = 'flex';
+    btn.className = 'state-offline';
+    btn.innerHTML = icon('cloudOff', 15) + (pending ? ` ${pending}` : ' Hors-ligne');
+    btn.title = pending
+      ? `Hors-ligne - ${pending} modification(s) seront envoyees au retour du reseau`
+      : 'Hors-ligne : consultation possible, les modifications seront envoyees au retour du reseau';
+  } else if(pending){
+    btn.style.display = 'flex';
+    btn.className = 'state-pending';
+    btn.innerHTML = icon('refreshCw', 15) + ` ${pending}`;
+    btn.title = `${pending} modification(s) en attente d'envoi - toucher pour reessayer`;
+  } else {
+    btn.style.display = 'none';
+  }
+}
+document.getElementById('sync-status-btn').addEventListener('click', ()=> flushOfflineQueue());
+window.addEventListener('online', ()=>{ updateSyncStatus(); flushOfflineQueue(); });
+window.addEventListener('offline', updateSyncStatus);
+setInterval(()=>{ if(navigator.onLine) flushOfflineQueue(); }, 30000);
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('/service-worker.js').catch(()=>{});
+  });
 }
 
 const START_YEAR = 2026;
@@ -507,8 +709,11 @@ async function checkHealth(){
     durableStorage = Boolean(h.durableStorage);
     return h.configured;
   } catch(e){
-    document.getElementById('setup-notice').style.display = 'block';
-    return false;
+    // Hors-ligne ou serveur injoignable : on ne sait pas si c'est mal
+    // configure ou juste sans reseau, donc pas de fausse alerte ici -
+    // le badge de synchronisation dans l'en-tete indique deja "hors-ligne".
+    document.getElementById('setup-notice').style.display = 'none';
+    return !isNetworkError(e);
   }
 }
 
@@ -524,7 +729,12 @@ async function loadCalendars(){
 }
 
 async function loadProjects(){
-  projects = await api('/api/projects');
+  try{
+    projects = await api('/api/projects');
+  } catch(e){
+    console.error(e);
+    if(!projects.length) return; // rien en memoire et rien en cache : on abandonne sans casser le reste
+  }
   activeProjects = new Set(projects.filter(p=>!p.archived).map(p=>p.id));
   renderProjectChips();
   renderProjectSelect();
@@ -700,7 +910,8 @@ async function loadEvents(){
   eventsByDay = {};
   allEventsList = [];
   try{
-    const events = await api(`/api/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
+    let events = await api(`/api/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
+    events = applyOfflineQueueToEvents(events, start, end);
     allEventsList = events.filter(ev=>ev.start);
     events.forEach(ev=>{
       if(!ev.start) return;
@@ -711,6 +922,16 @@ async function loadEvents(){
     });
   } catch(e){
     console.error(e);
+    // Meme si la lecture reseau/cache echoue totalement, on affiche au
+    // moins ce qui a ete cree/modifie hors-ligne et pas encore synchronise.
+    const local = applyOfflineQueueToEvents([], start, end);
+    allEventsList = local.filter(ev=>ev.start);
+    local.forEach(ev=>{
+      daysBetween(ev).forEach(day=>{
+        if(!eventsByDay[day]) eventsByDay[day] = [];
+        eventsByDay[day].push(ev);
+      });
+    });
   }
 }
 
@@ -971,10 +1192,13 @@ function renderPanelEvents(){
     const timeLabel = ev.allDay ? 'Journee entiere' : (timeOf(ev.start) + (ev.end ? ' - ' + timeOf(ev.end) : ''));
     const locLine = ev.location ? `<div style="font-size:12px;color:#888780;margin-left:16px;">${ev.location}</div>` : '';
     const statusLine = statusLabel(ev.status);
+    const pendingBadge = (ev._offline || ev._offlinePending)
+      ? `<span title="Pas encore synchronise" style="display:inline-flex;align-items:center;color:#8A6A1E;">${icon('refreshCw',11)}</span>` : '';
     row.innerHTML = `
       <div class="row-top">
         <span class="dot" style="background:${proj ? proj.color : '#B4B2A9'}"></span>
         <span>${ev.title}</span>
+        ${pendingBadge}
         ${statusLine}
         <span class="time">${timeLabel}</span>
         <span class="actions">
@@ -985,7 +1209,7 @@ function renderPanelEvents(){
       </div>
       ${locLine}`;
     row.querySelector('.del').addEventListener('click', async ()=>{
-      await api('/api/events', {method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({url: ev.url, etag: ev.etag})});
+      await apiDeleteEvent(ev);
       await loadEvents();
       renderPanelEvents();
       renderCalendar();
@@ -1007,11 +1231,7 @@ function renderPanelEvents(){
         start = new Date(`${target}T${st}:00`).toISOString();
         end = new Date(`${target}T${et}:00`).toISOString();
       }
-      await api('/api/events', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ title: ev.title, start, end, allDay: ev.allDay, projectId: proj ? proj.id : '', calendarUrl: ev.calendarUrl, location: ev.location || '', status: ev.status || '' })
-      });
+      await apiCreateEvent({ title: ev.title, start, end, allDay: ev.allDay, projectId: proj ? proj.id : '', calendarUrl: ev.calendarUrl, location: ev.location || '', status: ev.status || '' });
       await loadEvents();
       renderPanelEvents();
       renderCalendar();
@@ -1084,11 +1304,7 @@ function openEditForm(row, ev, proj){
       start = new Date(`${newStartDay}T${st}:00`).toISOString();
       end = new Date(`${newStartDay}T${et}:00`).toISOString();
     }
-    await api('/api/events', {
-      method: 'PUT',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ url: ev.url, etag: ev.etag, uid: ev.uid, title, start, end, allDay, projectId, location, status })
-    });
+    await apiUpdateEvent(ev, { url: ev.url, etag: ev.etag, uid: ev.uid, title, start, end, allDay, projectId, location, status });
     await loadEvents();
     renderPanelEvents();
     renderCalendar();
@@ -1123,11 +1339,7 @@ document.getElementById('add-form').addEventListener('submit', async (e)=>{
     start = new Date(`${currentPanelDate}T${st}:00`).toISOString();
     end = new Date(`${currentPanelDate}T${et}:00`).toISOString();
   }
-  await api('/api/events', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ title, start, end, allDay, projectId, calendarUrl, location, status })
-  });
+  await apiCreateEvent({ title, start, end, allDay, projectId, calendarUrl, location, status });
   document.getElementById('new-title').value = '';
   document.getElementById('new-location').value = '';
   document.getElementById('new-status').value = '';
@@ -1704,16 +1916,21 @@ document.getElementById('next-btn').addEventListener('click', async ()=>{
 });
 
 (async function init(){
+  updateSyncStatus();
   const ok = await checkHealth();
   await loadProjects();
   await loadQuickTitlesData();
   renderExtraChips();
+  // loadCalendars/loadEvents ont leur propre repli hors-ligne (cache du
+  // service worker + file d'attente locale), donc on les lance toujours,
+  // meme si le "health check" a echoue faute de reseau.
+  await loadCalendars();
+  await loadEvents();
   if(ok){
-    await loadCalendars();
-    await loadEvents();
     await refreshSubmissionsCount();
     await refreshProposalsCount();
   }
+  if(navigator.onLine) flushOfflineQueue();
   await renderToolsChips();
   await renderCalendar();
 })();
