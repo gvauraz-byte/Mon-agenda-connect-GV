@@ -20,5 +20,10 @@
     "id": "sport",
     "name": "ENSS",
     "color": "#7f77dd"
+  },
+  {
+    "id": "fils-de",
+    "name": "Fils de.",
+    "color": "#7f77dd"
   }
 ]
