@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "id": "we2mC1O-",
+    "status": "pending",
+    "createdAt": "2026-09-04T09:54:19.177Z",
+    "title": "Livraison finale du décor",
+    "start": "2026-12-10",
+    "end": "2026-12-10",
+    "allDay": true,
+    "location": "",
+    "projectId": "admin",
+    "projectName": "émotif anonyme",
+    "projectColor": "#ba7517",
+    "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/work/",
+    "contactLabel": ""
+  }
+]
