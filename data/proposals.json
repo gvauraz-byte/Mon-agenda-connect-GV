@@ -28,5 +28,20 @@
     "projectColor": "#378add",
     "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/work/",
     "contactLabel": ""
+  },
+  {
+    "id": "3N_iv4P6",
+    "status": "pending",
+    "createdAt": "2026-09-04T22:06:06.171Z",
+    "title": "Tigran indisponible",
+    "start": "2026-10-02",
+    "end": "2026-10-03",
+    "allDay": true,
+    "location": "",
+    "projectId": "client-a",
+    "projectName": "la vie devant soi",
+    "projectColor": "#378add",
+    "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/work/",
+    "contactLabel": ""
   }
 ]
