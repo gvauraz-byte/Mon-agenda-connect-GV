@@ -9,7 +9,7 @@ import { isHoliday, isVacation } from './lib/holidays.js';
 import { loadSubmissions, addSubmission, removeSubmission } from './lib/submissions.js';
 import { renderAnnualPdf, getMonths, isoDate, daysBetween } from './lib/pdf.js';
 import { isDurable } from './lib/datastore.js';
-import { loadShareLinks, addShareLink, findShareLink, removeShareLink } from './lib/shareLinks.js';
+import { loadShareLinks, addShareLink, findShareLink, removeShareLink, extendShareLink, purgeExpiredShareLinks } from './lib/shareLinks.js';
 import { loadProposals, addProposal, findProposal, updateProposal, removeProposal } from './lib/proposals.js';
 import { buildWeeklyDigest } from './lib/digest.js';
 import { sendEmail } from './lib/email.js';
@@ -41,7 +41,19 @@ app.get('/view/:token', async (req, res) => {
     const token = req.params.token;
     const legacyOk = Boolean(process.env.SHARE_TOKEN) && token === process.env.SHARE_TOKEN;
     const link = legacyOk ? null : await findShareLink(token);
-    if (!legacyOk && !link) return res.status(404).send('Page introuvable.');
+    if (!legacyOk && !link) {
+      // Le lien n'existe pas, ou il a expire : meme reponse, on ne dit pas
+      // a un visiteur si un jeton a exite.
+      return res.status(404).send(
+        '<!doctype html><meta charset="utf-8">' +
+          '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+          '<title>Lien expire</title>' +
+          '<body style="font-family:system-ui;background:#F6F4EF;color:#22201A;' +
+          'display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;">' +
+          '<div><p style="font-size:16px;">Ce lien de partage n\'est plus valable.</p>' +
+          '<p style="font-size:13px;color:#85806E;">Demandez-en un nouveau a Georges.</p></div>'
+      );
+    }
     res.sendFile(path.join(__dirname, 'views', 'view.html'));
   } catch (err) {
     res.status(500).send('Erreur serveur.');
@@ -55,7 +67,7 @@ app.get('/api/share-link', (req, res) => {
 
 app.get('/api/share-links', async (req, res) => {
   try {
-    res.json(await loadShareLinks());
+    res.json(await purgeExpiredShareLinks());
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -66,6 +78,17 @@ app.post('/api/share-links', async (req, res) => {
     const { label, projectIds, includeUntagged } = req.body;
     const entry = await addShareLink({ label, projectIds, includeUntagged });
     res.json({ ok: true, ...entry, path: `/view/${entry.id}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/share-links/:id/extend', async (req, res) => {
+  try {
+    const jours = Number(req.body && req.body.jours) || 7;
+    const link = await extendShareLink(req.params.id, jours);
+    if (!link) return res.status(404).json({ error: 'lien introuvable' });
+    res.json(link);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
