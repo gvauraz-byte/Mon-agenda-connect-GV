@@ -3,7 +3,9 @@
     "id": "client-a",
     "name": "la vie devant soi",
     "color": "#378add",
-    "archived": false
+    "archived": false,
+    "debut": "2026-09-07",
+    "livraison": "2026-10-05"
   },
   {
     "id": "perso",
