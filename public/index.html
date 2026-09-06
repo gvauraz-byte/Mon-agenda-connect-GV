@@ -435,6 +435,7 @@
       <input type="checkbox" id="new-share-untagged"> Inclure aussi les evenements sans projet
     </label>
     <p style="font-size:11px;color:#888780;margin:0 0 8px;">Ne coche aucun projet pour partager tout l'agenda.</p>
+    <p style="font-size:11px;color:#888780;margin:0 0 8px;">Un lien de sceno expire a la livraison du projet. Tous les autres expirent au bout d'une semaine. Tu peux prolonger un lien a tout moment.</p>
     <button type="button" id="new-share-add" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:none;background:var(--text);color:#fff;cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07l-1.42 1.42"></path><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07l1.41-1.41"></path></svg>Generer le lien</button>
   </div>
 </div>
@@ -1683,6 +1684,18 @@ async function openSharePanel(){
   await renderSharePanel();
 }
 
+// Un lien de partage porte desormais une date de mort. On l'affiche en clair,
+// et on previent quand elle approche.
+function echeanceLien(entry){
+  if(!entry.expiresAt) return '';
+  const fin = new Date(entry.expiresAt);
+  const jours = Math.ceil((fin - Date.now()) / 86400000);
+  const quand = fin.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
+  if(jours <= 0) return { texte:'Expire', couleur:'var(--danger)' };
+  if(jours <= 3) return { texte:`Expire le ${quand} (dans ${jours} j)`, couleur:'var(--danger)' };
+  return { texte:`Expire le ${quand}`, couleur:'#888780' };
+}
+
 async function renderSharePanel(){
   const wrap = document.getElementById('share-links-list');
   wrap.innerHTML = '<p style="font-size:13px;color:#888780;">Chargement...</p>';
@@ -1731,20 +1744,29 @@ async function renderSharePanel(){
       ? entry.projectIds.map(id=> projects.find(p=>p.id===id)?.name || id).join(', ')
       : 'Tous les projets';
     const url = `${window.location.origin}/view/${entry.id}`;
+    const ech = echeanceLien(entry);
     const row = document.createElement('div');
     row.className = 'ev-row';
     row.innerHTML = `
       <div class="row-top"><span style="font-weight:500;">${entry.label || names}</span></div>
       <div style="font-size:12px;color:#888780;margin-top:4px;">${names}${entry.includeUntagged ? ' + sans projet' : ''}</div>
       <div style="font-size:12px;color:#888780;margin-top:2px;word-break:break-all;">${url}</div>
-      <div style="margin-top:6px;display:flex;gap:10px;">
+      ${ech ? `<div style="font-size:11.5px;color:${ech.couleur};margin-top:4px;">${ech.texte}</div>` : ''}
+      <div style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;">
         <button type="button" class="copy" style="border:none;background:none;display:inline-flex;align-items:center;gap:4px;color:var(--accent);cursor:pointer;font-size:12px;">${icon('copy',13)}Copier</button>
+        <button type="button" class="prolonger" style="border:none;background:none;display:inline-flex;align-items:center;gap:4px;color:var(--accent);cursor:pointer;font-size:12px;">Prolonger d'une semaine</button>
         <button type="button" class="del" style="border:none;background:none;display:inline-flex;align-items:center;gap:4px;color:var(--danger);cursor:pointer;font-size:12px;">${icon('trash',13)}Supprimer</button>
       </div>
     `;
     row.querySelector('.copy').addEventListener('click', ()=>{
       navigator.clipboard?.writeText(url);
       alert('Lien copie :\n'+url);
+    });
+    row.querySelector('.prolonger').addEventListener('click', async ()=>{
+      await api('/api/share-links/'+entry.id+'/extend', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({jours:7})
+      });
+      await renderSharePanel();
     });
     row.querySelector('.del').addEventListener('click', async ()=>{
       if(!confirm('Supprimer ce lien ? Il ne fonctionnera plus.')) return;
