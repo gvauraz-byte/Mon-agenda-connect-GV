@@ -115,12 +115,16 @@ app.get('/api/projects', async (req, res) => {
 
 app.post('/api/projects', async (req, res) => {
   try {
-    const { name, color } = req.body;
+    const { name, color, debut, livraison } = req.body;
     if (!name || !color) return res.status(400).json({ error: 'name et color requis' });
     const list = await loadProjects();
     const id = slugify(name);
     if (!list.find((p) => p.id === id)) {
-      list.push({ id, name, color });
+      const projet = { id, name, color };
+      // Un projet qui porte un debut ET une livraison est une scenographie.
+      if (debut) projet.debut = debut;
+      if (livraison) projet.livraison = livraison;
+      list.push(projet);
       await saveProjects(list);
     }
     res.json(list);
@@ -131,13 +135,16 @@ app.post('/api/projects', async (req, res) => {
 
 app.put('/api/projects/:id', async (req, res) => {
   try {
-    const { name, color, archived } = req.body;
+    const { name, color, archived, debut, livraison } = req.body;
     const list = await loadProjects();
     const project = list.find((p) => p.id === req.params.id);
     if (!project) return res.status(404).json({ error: 'projet introuvable' });
     if (name) project.name = name;
     if (color) project.color = color;
     if (typeof archived === 'boolean') project.archived = archived;
+    // Chaine vide = on efface la date, le projet redevient un projet ordinaire.
+    if (typeof debut === 'string') { if (debut) project.debut = debut; else delete project.debut; }
+    if (typeof livraison === 'string') { if (livraison) project.livraison = livraison; else delete project.livraison; }
     await saveProjects(list);
     res.json(list);
   } catch (err) {
