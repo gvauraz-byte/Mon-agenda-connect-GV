@@ -2,7 +2,7 @@
 // fonctionnement hors-ligne (consultation + mise en file d'attente des
 // modifications faites sans connexion, envoyees des que le reseau revient).
 
-const SW_VERSION = 'agenda-v1';
+const SW_VERSION = 'agenda-v2';
 const SHELL_CACHE = SW_VERSION + '-shell';
 const API_CACHE = SW_VERSION + '-api';
 
@@ -48,23 +48,41 @@ function isShellRequest(request) {
   );
 }
 
+// Ne remplace le shell en cache que par une reponse qui contient vraiment
+// l'application : la page d'attente de Render est du HTML valide, elle aussi.
+async function rafraichirShell(request) {
+  try {
+    const res = await fetch(request);
+    if (!res || !res.ok) return;
+    const type = res.headers.get('content-type') || '';
+    if (!type.includes('text/html')) return;
+    const texte = await res.clone().text();
+    if (!texte.includes('id="cal"')) return; // ce n'est pas notre page
+    const cache = await caches.open(SHELL_CACHE);
+    await cache.put('/index.html', res);
+  } catch (err) {
+    // Hors-ligne ou serveur endormi : on garde ce qu'on a.
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return; // les ecritures passent en direct (gerees cote client)
 
   if (isShellRequest(request)) {
-    // Reseau d'abord (version a jour), repli sur le cache hors-ligne.
+    // Cache d'abord, rafraichi en arriere-plan.
+    //
+    // Pourquoi pas le reseau d'abord : l'instance Render s'endort apres une
+    // quinzaine de minutes sans visite. Au reveil, c'est RENDER qui repond a
+    // notre place, avec sa page noire "SERVICE WAKING UP", pendant trente a
+    // soixante secondes. Comme c'est une reponse valide, le reseau d'abord la
+    // servait telle quelle -- et pire, la mettait en cache a la place de
+    // l'application. On sert donc immediatement la derniere version connue,
+    // et on ne remplace le shell que par une page qui est bien la notre.
     event.respondWith(
-      fetch(request)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(SHELL_CACHE).then((cache) => cache.put('/index.html', copy)).catch(() => {});
-          return res;
-        })
-        .catch(() =>
-          caches.match('/index.html').then((cached) => cached || Response.error())
-        )
+      caches.match('/index.html').then((cached) => cached || fetch(request))
     );
+    event.waitUntil(rafraichirShell(request));
     return;
   }
 
