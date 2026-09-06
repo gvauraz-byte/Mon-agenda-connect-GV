@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="color-scheme" content="light">
 <title>Agenda projets</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Agenda">
@@ -17,6 +18,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
 <style>
   :root {
+    color-scheme: light;
+    background: #F6F4EF;
     --bg: #F6F4EF;
     --surface: #FFFFFF;
     --border: #E4E0D3;
@@ -259,7 +262,26 @@
   .proj-row button.danger-btn { color: var(--danger); }
   .proj-row button.danger-btn:hover { background: var(--danger-soft); color: var(--danger); }
   .proj-row button.visibility { padding: 6px; }
-  #new-project-row { display: flex; gap: 8px; align-items: center; }
+  .proj-dates, #new-project-dates {
+    flex-basis: 100%; display: flex; gap: 14px; flex-wrap: wrap;
+    font-size: 11.5px; color: var(--text-muted); padding-left: 34px;
+  }
+  .proj-dates label, #new-project-dates label { display: flex; align-items: center; gap: 5px; }
+  .proj-dates input[type=date], #new-project-dates input[type=date] {
+    padding: 4px 6px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border); background: var(--surface);
+    font-size: 11.5px; color: var(--text);
+  }
+  #new-project-dates { padding-left: 0; margin-top: 8px; }
+
+  /* rubans de scenographie dans la grille annuelle */
+  .pgutter { position: absolute; left: 2px; top: 0; bottom: 0; width: 11px; pointer-events: none; }
+  .pribbon { position: absolute; left: 0; width: 4px; top: -1px; bottom: -1px; }
+  .pribbon.start { top: 2px; border-radius: 2px 2px 0 0; }
+  .pribbon.end { bottom: 2px; border-radius: 0 0 2px 2px; }
+  .pribbon.solo { top: 2px; bottom: 2px; border-radius: 2px; }
+  td.has-ribbon { padding-left: 16px; }
+  #new-project-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   #new-project-row input[type=text] { flex: 1; padding: 9px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); }
   #new-project-row input[type=color] { width: 32px; height: 32px; border: none; border-radius: 50%; box-shadow: 0 0 0 1px var(--border); }
   #new-project-row button {
@@ -361,6 +383,10 @@
     <input type="text" id="new-project-name" placeholder="Nom du nouveau projet">
     <input type="color" id="new-project-color" value="#7F77DD">
     <button id="new-project-add"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>Ajouter</button>
+    <div id="new-project-dates">
+      <label>Scenographie &mdash; debut <input type="date" id="new-project-debut"></label>
+      <label>livraison <input type="date" id="new-project-livraison"></label>
+    </div>
   </div>
   <p style="font-size:12px;color:#888780;margin-top:12px;">Touche "Lien formulaire" sur un projet pour copier un lien a envoyer a un partenaire, deja fixe sur ce projet.</p>
 </div>
@@ -1053,13 +1079,31 @@ async function renderCalendar(){
         linesHtml += `<div class="ev-more">+${visibleDayEvents.length - MAX_LINES}</div>`;
       }
 
+      // Rubans de scenographie : un projet qui porte un debut ET une livraison
+      // est une sceno ; on trace une barre continue du premier au dernier jour.
+      const rubans = projects.filter(p =>
+        p.debut && p.livraison && !p.archived &&
+        activeProjects.has(p.id) &&
+        dateStr >= p.debut && dateStr <= p.livraison
+      );
+      let gutterHtml = '';
+      if(rubans.length){
+        gutterHtml = '<div class="pgutter">' + rubans.map((p,i)=>{
+          const estDebut = dateStr === p.debut;
+          const estFin = dateStr === p.livraison;
+          const cls = 'pribbon' + (estDebut && estFin ? ' solo' : estDebut ? ' start' : estFin ? ' end' : '');
+          return `<span class="${cls}" style="background:${p.color};left:${i*6}px"></span>`;
+        }).join('') + '</div>';
+      }
+
       let marksHtml = '';
       if(hasConfirm) marksHtml += `<div style="position:absolute;top:0;right:0;bottom:0;width:3px;background:#E8B93A;"></div>`;
       if(hasOption) marksHtml += `<div style="position:absolute;top:0;right:${hasConfirm ? '3px' : '0'};bottom:0;width:3px;background:#185FA5;"></div>`;
       const importantStyle = hasImportant ? 'outline:2px solid #A32D2D;outline-offset:-2px;' : '';
 
       td.style.cssText = `background:${bg};${border}${importantStyle}`;
-      td.innerHTML = `<div style="color:${numColor};font-weight:${holLabel?600:400};">${d} ${wd}${conflictBadge}${chargeBadge}</div>${holLabel}${linesHtml}${marksHtml}`;
+      if(rubans.length) td.classList.add('has-ribbon');
+      td.innerHTML = `${gutterHtml}<div style="color:${numColor};font-weight:${holLabel?600:400};">${d} ${wd}${conflictBadge}${chargeBadge}</div>${holLabel}${linesHtml}${marksHtml}`;
       td.addEventListener('click', ()=> openPanel(dateStr));
       row.appendChild(td);
     }
@@ -1368,16 +1412,29 @@ function renderProjectsPanel(){
       <button class="list" type="button">${icon('list',14)}Voir la liste</button>
       <button class="link" type="button">${icon('link',14)}Lien formulaire</button>
       <button type="button" class="danger-btn">${icon('trash',14)}Supprimer</button>
+      <div class="proj-dates">
+        <label>Scenographie &mdash; debut <input type="date" class="p-debut" value="${p.debut || ''}"></label>
+        <label>livraison <input type="date" class="p-livraison" value="${p.livraison || ''}"></label>
+      </div>
     `;
     const colorInput = row.querySelector('input[type=color]');
     const nameInput = row.querySelector('input[type=text]');
+    const debutInput = row.querySelector('.p-debut');
+    const livrInput = row.querySelector('.p-livraison');
     async function save(){
-      await api('/api/projects/'+p.id, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name: nameInput.value.trim(), color: colorInput.value})});
+      await api('/api/projects/'+p.id, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+        name: nameInput.value.trim(),
+        color: colorInput.value,
+        debut: debutInput.value,
+        livraison: livrInput.value
+      })});
       await loadProjects();
       renderCalendar();
     }
     colorInput.addEventListener('change', save);
     nameInput.addEventListener('blur', save);
+    debutInput.addEventListener('change', save);
+    livrInput.addEventListener('change', save);
     row.querySelector('.visibility').addEventListener('click', async ()=>{
       await api('/api/projects/'+p.id, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({archived: !p.archived})});
       await loadProjects();
@@ -1403,9 +1460,13 @@ function renderProjectsPanel(){
 document.getElementById('new-project-add').addEventListener('click', async ()=>{
   const name = document.getElementById('new-project-name').value.trim();
   const color = document.getElementById('new-project-color').value;
+  const debut = document.getElementById('new-project-debut').value;
+  const livraison = document.getElementById('new-project-livraison').value;
   if(!name) return;
-  await api('/api/projects', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name, color})});
+  await api('/api/projects', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name, color, debut, livraison})});
   document.getElementById('new-project-name').value = '';
+  document.getElementById('new-project-debut').value = '';
+  document.getElementById('new-project-livraison').value = '';
   await loadProjects();
   renderCalendar();
 });
