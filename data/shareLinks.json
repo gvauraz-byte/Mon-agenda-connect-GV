@@ -6,6 +6,7 @@
       "admin"
     ],
     "includeUntagged": false,
-    "createdAt": "2026-07-20T19:41:34.336Z"
+    "createdAt": "2026-07-20T19:41:34.336Z",
+    "expiresAt": "2026-12-10T23:59:59.999Z"
   }
 ]
