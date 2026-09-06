@@ -1448,7 +1448,7 @@ function renderProjectsPanel(){
       navigator.clipboard?.writeText(url);
       alert('Lien copie :\n'+url);
     });
-    row.querySelector('button:last-child').addEventListener('click', async ()=>{
+    row.querySelector('.danger-btn').addEventListener('click', async ()=>{
       if(!confirm(`Supprimer le projet "${p.name}" ?`)) return;
       await api('/api/projects/'+p.id, {method:'DELETE'});
       await loadProjects();
