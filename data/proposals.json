@@ -46,5 +46,20 @@
     "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/work/",
     "contactLabel": "",
     "respondedAt": "2026-09-04T22:08:07.209Z"
+  },
+  {
+    "id": "mbZHzdD9",
+    "status": "pending",
+    "createdAt": "2026-09-07T08:15:43.394Z",
+    "title": "Visite de l'architecte E. Vermande - 70 bd de Clichy (diagnostic fissures)",
+    "start": "2026-09-23T09:00:00+02:00",
+    "end": "2026-09-23T10:30:00+02:00",
+    "allDay": false,
+    "location": "70 boulevard de Clichy, 75018 Paris",
+    "projectId": "perso",
+    "projectName": "Perso",
+    "projectColor": "#1d9e75",
+    "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/home/",
+    "contactLabel": ""
   }
 ]
