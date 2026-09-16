@@ -61,5 +61,20 @@
     "projectColor": "#378add",
     "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/work/",
     "contactLabel": ""
+  },
+  {
+    "id": "RXJBduZ4",
+    "status": "pending",
+    "createdAt": "2026-09-16T08:11:31.605Z",
+    "title": "Répétition générale et première — La vie devant soi",
+    "start": "2026-10-17",
+    "end": "2026-10-17",
+    "allDay": true,
+    "location": "Studio des Champs-Élysées, 15 av. Montaigne, 75008 Paris",
+    "projectId": "client-a",
+    "projectName": "la vie devant soi",
+    "projectColor": "#378add",
+    "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/work/",
+    "contactLabel": ""
   }
 ]
