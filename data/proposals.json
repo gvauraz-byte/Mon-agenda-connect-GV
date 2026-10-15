@@ -61,5 +61,20 @@
     "projectColor": "#378add",
     "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/work/",
     "contactLabel": ""
+  },
+  {
+    "id": "ntbet7cR",
+    "status": "pending",
+    "createdAt": "2026-10-15T13:06:29.013Z",
+    "title": "Consultation vidéo Dr Brault (Doctolib)",
+    "start": "2026-10-16T08:00:00.000Z",
+    "end": "2026-10-16T08:30:00.000Z",
+    "allDay": false,
+    "location": "Consultation vidéo",
+    "projectId": "perso",
+    "projectName": "Perso",
+    "projectColor": "#1d9e75",
+    "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/home/",
+    "contactLabel": ""
   }
 ]
