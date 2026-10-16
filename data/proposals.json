@@ -48,21 +48,6 @@
     "respondedAt": "2026-09-04T22:08:07.209Z"
   },
   {
-    "id": "SUYp2vr_",
-    "status": "pending",
-    "createdAt": "2026-10-12T08:29:39.456Z",
-    "title": "Première — La vie devant soi",
-    "start": "2026-10-22",
-    "end": "2026-10-22",
-    "allDay": true,
-    "location": "Studio des Champs-Élysées, 15 av. Montaigne, 75008 Paris",
-    "projectId": "client-a",
-    "projectName": "la vie devant soi",
-    "projectColor": "#378add",
-    "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/work/",
-    "contactLabel": ""
-  },
-  {
     "id": "ntbet7cR",
     "status": "pending",
     "createdAt": "2026-10-15T13:06:29.013Z",
