@@ -76,5 +76,20 @@
     "projectColor": "#1d9e75",
     "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/work/",
     "contactLabel": ""
+  },
+  {
+    "id": "L0CRbj_b",
+    "status": "pending",
+    "createdAt": "2026-11-11T08:13:20.978Z",
+    "title": "« Derrière » — Théâtre de l'Atelier (retrait des places au guichet)",
+    "start": "2026-11-11T19:30:00.000Z",
+    "end": "2026-11-11T22:00:00.000Z",
+    "allDay": false,
+    "location": "Théâtre de l'Atelier, 1 place Charles Dullin, 75018 Paris — 1 invitation + 1 détaxe 20 €, retrait au guichet 30 min avant",
+    "projectId": "perso",
+    "projectName": "Perso",
+    "projectColor": "#1d9e75",
+    "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/home/",
+    "contactLabel": ""
   }
 ]
