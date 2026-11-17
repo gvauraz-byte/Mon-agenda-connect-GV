@@ -136,5 +136,20 @@
     "projectColor": "#1d9e75",
     "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/home/",
     "contactLabel": ""
+  },
+  {
+    "id": "82K_Zc6F",
+    "status": "pending",
+    "createdAt": "2026-11-17T08:12:54.136Z",
+    "title": "Vol Madrid → Paris CDG — IB0591 (réf. NFMHT)",
+    "start": "2027-01-11T20:40:00.000Z",
+    "end": "2027-01-11T22:50:00.000Z",
+    "allDay": false,
+    "location": "Madrid T4 21:40 → Paris CDG T2D 23:50 — Georges + Sergio",
+    "projectId": "perso",
+    "projectName": "Perso",
+    "projectColor": "#1d9e75",
+    "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/home/",
+    "contactLabel": ""
   }
 ]
