@@ -91,5 +91,20 @@
     "projectColor": "#1d9e75",
     "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/home/",
     "contactLabel": ""
+  },
+  {
+    "id": "0elF1gfS",
+    "status": "pending",
+    "createdAt": "2026-11-17T08:12:46.170Z",
+    "title": "Train Paris Gare de Lyon → Mâcon Loché — TGV 6621 (réf. 3YB76U, option à payer)",
+    "start": "2026-12-23T14:50:00.000Z",
+    "end": "2026-12-23T16:50:00.000Z",
+    "allDay": false,
+    "location": "Paris Gare de Lyon, départ 15:50 — 2 voyageurs",
+    "projectId": "perso",
+    "projectName": "Perso",
+    "projectColor": "#1d9e75",
+    "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/home/",
+    "contactLabel": ""
   }
 ]
