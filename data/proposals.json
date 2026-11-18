@@ -151,5 +151,20 @@
     "projectColor": "#1d9e75",
     "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/home/",
     "contactLabel": ""
+  },
+  {
+    "id": "JA0qY376",
+    "status": "pending",
+    "createdAt": "2026-11-18T08:13:02.405Z",
+    "title": "Désinsectisation S3D — 70 bd de Clichy (parties privatives, accès à ouvrir)",
+    "start": "2026-11-24T07:00:00.000Z",
+    "end": "2026-11-24T08:00:00.000Z",
+    "allDay": false,
+    "location": "70 boulevard de Clichy, 75018 Paris — passage entre 08h00 et 09h00, accès à faciliter (syndic Fag Pérenne)",
+    "projectId": "perso",
+    "projectName": "Perso",
+    "projectColor": "#1d9e75",
+    "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/home/",
+    "contactLabel": ""
   }
 ]
