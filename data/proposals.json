@@ -166,20 +166,5 @@
     "projectColor": "#1d9e75",
     "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/home/",
     "contactLabel": ""
-  },
-  {
-    "id": "8IUL9k1R",
-    "status": "pending",
-    "createdAt": "2026-11-19T11:27:05.292Z",
-    "title": "Visite de La Fav Paris (Alexandra) — avant décision sur la soirée",
-    "start": "2026-11-20T19:15:00.000Z",
-    "end": "2026-11-20T20:15:00.000Z",
-    "allDay": false,
-    "location": "La Fav Paris — visite du lieu confirmée par mail le 19/11 (privatisation@lafav.paris)",
-    "projectId": "perso",
-    "projectName": "Perso",
-    "projectColor": "#1d9e75",
-    "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/home/",
-    "contactLabel": ""
   }
 ]
