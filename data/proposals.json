@@ -181,5 +181,20 @@
     "projectColor": "#1d9e75",
     "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/home/",
     "contactLabel": ""
+  },
+  {
+    "id": "3U-FbhD5",
+    "status": "pending",
+    "createdAt": "2026-11-24T07:49:27.839Z",
+    "title": "Soirée au Badaboum — Le Bureau du Détective (40 personnes)",
+    "start": "2026-12-04T19:30:00+01:00",
+    "end": "2026-12-04T23:59:00+01:00",
+    "allDay": false,
+    "location": "Le Badaboum, 2 bis rue des Taillandiers, 75011 Paris — réservation confirmée via Joy/Privateaser, réf. MMJKSW / CJBYAR",
+    "projectId": "perso",
+    "projectName": "Perso",
+    "projectColor": "#1d9e75",
+    "calendarUrl": "https://caldav.icloud.com/1794824485/calendars/home/",
+    "contactLabel": ""
   }
 ]
